@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Domain/OmniCart.Domain.csproj" />
+  <Project Path="Infrastructure/OmniCart.Infrastructure.csproj" />
+  <Project Path="TelegramBot/OmniCart.TelegramBot.csproj" />
+
+
+</Solution>
