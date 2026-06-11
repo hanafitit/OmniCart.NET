@@ -1,0 +1,74 @@
+@page "/orders"
+@using OmniCart.Domain.Entities
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h3" GutterBottom="true">Заказы</MudText>
+
+<MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Дата</MudTh>
+        <MudTh>Клиент</MudTh>
+        <MudTh>Сумма</MudTh>
+        <MudTh>Статус</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">@context.Id</MudTd>
+        <MudTd DataLabel="Дата">@context.CreatedAt.ToString("g")</MudTd>
+        <MudTd DataLabel="Клиент">@context.User?.FirstName @context.User?.LastName</MudTd>
+        <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
+        <MudTd DataLabel="Статус">
+            <MudSelect T="string" Value="@context.Status" ValueChanged="@(s => UpdateStatusAsync(context, s))" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
+                <MudSelectItem Value="@("Processing")">В работе</MudSelectItem>
+                <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
+                <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
+                <MudSelectItem Value="@("Cancelled")">Отменен</MudSelectItem>
+            </MudSelect>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<Order> _orders = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrdersAsync();
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        _loading = true;
+        using var context = await DbFactory.CreateDbContextAsync();
+        _orders = await context.Orders
+            .Include(o => o.User)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task UpdateStatusAsync(Order order, string newStatus)
+    {
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbOrder = await context.Orders.FindAsync(order.Id);
+            if (dbOrder != null)
+            {
+                dbOrder.Status = newStatus;
+                await context.SaveChangesAsync();
+                order.Status = newStatus;
+                Snackbar.Add($"Статус заказа #{order.Id} обновлен на {newStatus}", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка при обновлении статуса: {ex.Message}", Severity.Error);
+        }
+    }
+}

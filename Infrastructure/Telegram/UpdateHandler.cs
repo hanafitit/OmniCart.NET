@@ -1,4 +1,5 @@
 using OmniCart.Domain.Entities;
+using OmniCart.Infrastructure.Services;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -14,15 +15,18 @@ public class UpdateHandler
     private readonly ITelegramBotClient _botClient;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UpdateHandler> _logger;
+    private readonly IGoogleSheetsService _sheetsService;
 
     public UpdateHandler(
         ITelegramBotClient botClient,
         IServiceProvider serviceProvider,
-        ILogger<UpdateHandler> logger)
+        ILogger<UpdateHandler> logger,
+        IGoogleSheetsService sheetsService)
     {
         _botClient = botClient;
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _sheetsService = sheetsService;
     }
 
     public async Task HandleUpdateAsync(Update update, CancellationToken ct)
@@ -514,6 +518,16 @@ public class UpdateHandler
                 user.DeliveryAddress = text;
                 user.UpdatedAt = DateTime.UtcNow;
                 await SaveUserAsync(user, ct);
+
+                try
+                {
+                    await _sheetsService.AddOrderAsync(order, ct);
+                    _logger.LogInformation("✅ Заказ {OrderId} добавлен в Google Таблицу", order.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Ошибка при добавлении заказа {OrderId} в Google Таблицу: {Message}", order.Id, ex.Message);
+                }
 
                 await _botClient.SendMessage(
                     chatId: chatId,

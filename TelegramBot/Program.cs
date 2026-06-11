@@ -1,4 +1,6 @@
 ﻿using OmniCart.Infrastructure;
+using OmniCart.Infrastructure.Configuration;
+using OmniCart.Infrastructure.Services;
 using OmniCart.Infrastructure.Telegram;
 using OmniCart.TelegramBot.Workers;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +30,10 @@ var builder = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<ITelegramBotClient>(
             new TelegramBotClient(telegramSettings.Token));
+
+        services.Configure<GoogleSheetsSettings>(
+            context.Configuration.GetSection("GoogleSheetsSettings"));
+        services.AddScoped<IGoogleSheetsService, GoogleSheetsService>();
 
         services.AddScoped<UpdateHandler>();
 
