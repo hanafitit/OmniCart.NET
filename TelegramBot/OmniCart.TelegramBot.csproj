@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\domain\OmniCart.Domain.csproj" />
+    <ProjectReference Include="..\Domain\OmniCart.Domain.csproj" />
     <ProjectReference Include="..\Infrastructure\OmniCart.Infrastructure.csproj" />
   </ItemGroup>
 

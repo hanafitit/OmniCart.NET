@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\domain\OmniCart.Domain.csproj" />
+    <ProjectReference Include="..\Domain\OmniCart.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
