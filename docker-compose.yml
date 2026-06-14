@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: neondb
       POSTGRES_USER: neondb_owner
-      POSTGRES_PASSWORD: npg_fv9BLY8IVWrt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
 
@@ -15,8 +15,8 @@ services:
     depends_on:
       - db
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=npg_fv9BLY8IVWrt;"
-      TelegramBotSettings__Token: "YOUR_BOT_TOKEN"
+      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD};"
+      TelegramBotSettings__Token: "${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}"
 
   web:
     build:
@@ -27,5 +27,5 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=npg_fv9BLY8IVWrt;"
+      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD};"
       ASPNETCORE_URLS: "http://+:8080"

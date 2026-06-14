@@ -64,7 +64,10 @@ public class GoogleSheetsService
         GoogleCredential credential;
         using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.CredentialsJson)))
         {
-            credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
+            credential = ServiceAccountCredential
+                .FromServiceAccountData(stream)
+                .ToGoogleCredential()
+                .CreateScoped(Scopes);
         }
 
         return new SheetsService(new BaseClientService.Initializer

@@ -5,6 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile(
+    Path.Combine(builder.Environment.ContentRootPath, "..", "TelegramBot", "appsettings.json"),
+    optional: true,
+    reloadOnChange: true);
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -13,7 +18,7 @@ builder.Services.AddMudServices();
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=ep-round-haze-aqts00ty.c-8.us-east-1.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_fv9BLY8IVWrt;SSL Mode=Require;Trust Server Certificate=true;";
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
 {
