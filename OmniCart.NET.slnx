@@ -1,7 +1,6 @@
 <Solution>
-  <Project Path="Domain/OmniCart.Domain.csproj" />
+  <Project Path="domain/OmniCart.Domain.csproj" />
   <Project Path="Infrastructure/OmniCart.Infrastructure.csproj" />
+  <Project Path="OmniCart.BlazorAdmin/OmniCart.BlazorAdmin.csproj" />
   <Project Path="TelegramBot/OmniCart.TelegramBot.csproj" />
-
-
 </Solution>

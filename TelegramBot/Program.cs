@@ -31,6 +31,10 @@ var builder = Host.CreateDefaultBuilder(args)
 
         services.AddScoped<UpdateHandler>();
 
+        services.Configure<GoogleSheetsSettings>(
+            context.Configuration.GetSection("GoogleSheetsSettings"));
+        services.AddScoped<GoogleSheetsService>();
+
         services.AddHostedService<TelegramBotWorker>();
 
         // Logging

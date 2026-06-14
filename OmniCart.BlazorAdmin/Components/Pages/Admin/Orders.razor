@@ -1,0 +1,79 @@
+@page "/admin/orders"
+@using OmniCart.Domain.Entities
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<MudText Typo="Typo.h3" GutterBottom="true">Заказы</MudText>
+
+<MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Дата</MudTh>
+        <MudTh>Клиент</MudTh>
+        <MudTh>Сумма</MudTh>
+        <MudTh>Статус</MudTh>
+        <MudTh>Действия</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">@context.Id</MudTd>
+        <MudTd DataLabel="Дата">@context.CreatedAt.ToString("g")</MudTd>
+        <MudTd DataLabel="Клиент">@context.User?.FirstName @context.User?.LastName (@context.User?.TelegramUserId)</MudTd>
+        <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
+        <MudTd DataLabel="Статус">
+            <MudChip T="string" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Действия">
+            <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense">
+                <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
+                <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
+                <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
+                <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
+                <MudSelectItem Value="@("Cancelled")">Отменен</MudSelectItem>
+            </MudSelect>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<Order> _orders = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        _loading = true;
+        using var db = await DbFactory.CreateDbContextAsync();
+        _orders = await db.Orders
+            .Include(o => o.User)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task UpdateStatus(Order order, string newStatus)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        var existingOrder = await db.Orders.FindAsync(order.Id);
+        if (existingOrder != null)
+        {
+            existingOrder.Status = newStatus;
+            await db.SaveChangesAsync();
+            order.Status = newStatus;
+        }
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Created" => Color.Info,
+        "Processing" => Color.Warning,
+        "Shipped" => Color.Primary,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}
