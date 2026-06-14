@@ -1,0 +1,45 @@
+﻿@page "/"
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<MudText Typo="Typo.h3" GutterBottom="true">Дашборд</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-primary); color: white;">
+            <MudText Typo="Typo.h6">Выручка</MudText>
+            <MudText Typo="Typo.h4">@_totalRevenue.ToString("N0") руб.</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-secondary); color: white;">
+            <MudText Typo="Typo.h6">Заказов сегодня</MudText>
+            <MudText Typo="Typo.h4">@_ordersToday</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-info); color: white;">
+            <MudText Typo="Typo.h6">Всего клиентов</MudText>
+            <MudText Typo="Typo.h4">@_totalUsers</MudText>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private decimal _totalRevenue;
+    private int _ordersToday;
+    private int _totalUsers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        _totalRevenue = await db.Orders.SumAsync(o => o.TotalPrice);
+
+        var today = DateTime.UtcNow.Date;
+        _ordersToday = await db.Orders.CountAsync(o => o.CreatedAt >= today);
+
+        _totalUsers = await db.Users.CountAsync();
+    }
+}

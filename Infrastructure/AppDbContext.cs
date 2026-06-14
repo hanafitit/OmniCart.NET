@@ -19,6 +19,37 @@ namespace OmniCart.Infrastructure
         {
             base.OnModelCreating(modelBuilder);
 
+            // Сидирование товаров
+            modelBuilder.Entity<Product>().HasData(
+                new Product
+                {
+                    Id = 1,
+                    Name = "Смартфон Omni X1",
+                    Description = "Флагманский смартфон с отличной камерой.",
+                    Price = 59990.00m,
+                    Stock = 10,
+                    CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Product
+                {
+                    Id = 2,
+                    Name = "Беспроводные наушники Omni Buds",
+                    Description = "Чистый звук и глубокие басы.",
+                    Price = 4990.00m,
+                    Stock = 50,
+                    CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Product
+                {
+                    Id = 3,
+                    Name = "Чехол для Omni X1",
+                    Description = "Защитный чехол из силикона.",
+                    Price = 990.00m,
+                    Stock = 100,
+                    CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+                }
+            );
+
             // Конфигурация User
             modelBuilder.Entity<User>(entity =>
             {

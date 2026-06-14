@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: neondb
+      POSTGRES_USER: neondb_owner
+      POSTGRES_PASSWORD: npg_fv9BLY8IVWrt
+    ports:
+      - "5432:5432"
+
+  bot:
+    build:
+      context: .
+      dockerfile: TelegramBot/Dockerfile
+    depends_on:
+      - db
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=npg_fv9BLY8IVWrt;"
+      TelegramBotSettings__Token: "YOUR_BOT_TOKEN"
+
+  web:
+    build:
+      context: .
+      dockerfile: OmniCart.BlazorAdmin/Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=npg_fv9BLY8IVWrt;"
+      ASPNETCORE_URLS: "http://+:8080"
