@@ -14,6 +14,7 @@
         <MudTh>ID</MudTh>
         <MudTh>Дата</MudTh>
         <MudTh>Клиент</MudTh>
+        <MudTh>Адрес</MudTh>
         <MudTh>Сумма</MudTh>
         <MudTh>Статус</MudTh>
         <MudTh>Действия</MudTh>
@@ -22,6 +23,7 @@
         <MudTd DataLabel="ID">@context.Id</MudTd>
         <MudTd DataLabel="Дата">@context.CreatedAt.ToString("g")</MudTd>
         <MudTd DataLabel="Клиент">@context.User?.FirstName @context.User?.LastName (@context.User?.TelegramUserId)</MudTd>
+        <MudTd DataLabel="Адрес">@context.DeliveryAddress</MudTd>
         <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
         <MudTd DataLabel="Статус">
             <MudChip T="string" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
