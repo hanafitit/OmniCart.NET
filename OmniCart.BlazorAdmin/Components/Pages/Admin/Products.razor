@@ -56,8 +56,9 @@
         {
             { x => x.Product, new Product { Name = "", Description = "" } }
         };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
-        var dialog = await DialogService.ShowAsync<ProductDialog>("Добавить товар", parameters);
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Добавить товар", parameters, options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })
@@ -81,8 +82,9 @@
                 }
             }
         };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
-        var dialog = await DialogService.ShowAsync<ProductDialog>("Редактировать товар", parameters);
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Редактировать товар", parameters, options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })
@@ -93,26 +95,14 @@
 
     private async Task DeleteProduct(Product product)
     {
-        var parameters = new DialogParameters {
-            { "ContentText", $"Вы уверены, что хотите удалить товар '{product.Name}'?" },
-            { "ButtonText", "Удалить" },
-            { "Color", Color.Error }
-        };
-
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Подтверждение", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        using var db = await DbFactory.CreateDbContextAsync();
+        var p = await db.Products.FindAsync(product.Id);
+        if (p != null)
         {
-            using var db = await DbFactory.CreateDbContextAsync();
-            var p = await db.Products.FindAsync(product.Id);
-            if (p != null)
-            {
-                db.Products.Remove(p);
-                await db.SaveChangesAsync();
-                Snackbar.Add("Товар удален", Severity.Success);
-                await LoadProducts();
-            }
+            db.Products.Remove(p);
+            await db.SaveChangesAsync();
+            Snackbar.Add("Товар удален", Severity.Success);
+            await LoadProducts();
         }
     }
 }
