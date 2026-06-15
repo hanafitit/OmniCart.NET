@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<AppDbContext> DbFactory
@@ -24,12 +24,23 @@
             <MudText Typo="Typo.h4">@_totalUsers</MudText>
         </MudCard>
     </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Статистика заказов за последние 7 дней</MudText>
+            <MudChart ChartType="ChartType.Bar" ChartSeries="@_series" @bind-SelectedIndex="_index" XAxisLabels="@_xAxisLabels" Width="100%" Height="350px"></MudChart>
+        </MudPaper>
+    </MudItem>
 </MudGrid>
 
 @code {
     private decimal _totalRevenue;
     private int _ordersToday;
     private int _totalUsers;
+    private int _index = -1;
+
+    private List<ChartSeries<double>> _series = new();
+    private string[] _xAxisLabels = Array.Empty<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -37,9 +48,31 @@
 
         _totalRevenue = await db.Orders.SumAsync(o => o.TotalPrice);
 
-        var today = DateTime.UtcNow.Date;
-        _ordersToday = await db.Orders.CountAsync(o => o.CreatedAt >= today);
+        var todayUtc = DateTime.UtcNow.Date;
+        _ordersToday = await db.Orders.CountAsync(o => o.CreatedAt >= todayUtc);
 
         _totalUsers = await db.Users.CountAsync();
+
+        // Подготовка данных для графика (одним запросом)
+        var sevenDaysAgo = todayUtc.AddDays(-6);
+
+        var ordersData = await db.Orders
+            .Where(o => o.CreatedAt >= sevenDaysAgo)
+            .GroupBy(o => o.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var last7Days = Enumerable.Range(0, 7)
+            .Select(i => sevenDaysAgo.AddDays(i))
+            .ToList();
+
+        _xAxisLabels = last7Days.Select(d => d.ToString("dd.MM")).ToArray();
+
+        var orderCounts = last7Days.Select(d => (double)(ordersData.FirstOrDefault(od => od.Date == d)?.Count ?? 0)).ToArray();
+
+        _series = new List<ChartSeries<double>>
+        {
+            new ChartSeries<double> { Name = "Заказы", Data = orderCounts }
+        };
     }
 }
