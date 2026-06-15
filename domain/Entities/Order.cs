@@ -7,6 +7,7 @@ public class Order
     public required User User { get; set; }
     public decimal TotalPrice { get; set; }
     public required string Status { get; set; }
+    public string? DeliveryAddress { get; set; }
     public DateTime CreatedAt { get; set; }
     public ICollection<OrderItem> OrderItems { get; set; } = [];
 }
