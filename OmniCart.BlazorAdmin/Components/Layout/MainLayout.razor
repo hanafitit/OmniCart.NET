@@ -1,6 +1,6 @@
 ﻿@inherits LayoutComponentBase
 
-<MudThemeProvider />
+<MudThemeProvider Theme="_currentTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -23,6 +23,19 @@
 
 @code {
     bool _drawerOpen = true;
+
+    private MudTheme _currentTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#1E293B",          // Тёмно-грифельный (для AppBar и важных акцентов)
+            Secondary = "#6366F1",        // Индиго (для кнопок действий, например "Добавить товар")
+            Background = "#F8FAFC",       // Мягкий светло-серый фон вместо чисто белого
+            AppbarBackground = "#1E293B", // Цвет верхней панели
+            DrawerBackground = "#FFFFFF", // Боковое меню оставляем белым
+            Surface = "#FFFFFF"           // Карточки и таблицы белые
+        }
+    };
 
     void DrawerToggle()
     {

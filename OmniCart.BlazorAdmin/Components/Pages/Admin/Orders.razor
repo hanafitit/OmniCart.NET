@@ -10,9 +10,10 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudText Typo="Typo.h3" GutterBottom="true">Заказы</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold mb-4">Заказы</MudText>
 
-<MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+    <MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" Elevation="1" Class="rounded-lg">
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Дата</MudTh>
@@ -45,6 +46,7 @@
         </MudTd>
     </RowTemplate>
 </MudTable>
+</MudContainer>
 
 @code {
     private List<Order> _orders = new();
