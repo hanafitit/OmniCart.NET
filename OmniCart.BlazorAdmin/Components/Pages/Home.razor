@@ -1,7 +1,10 @@
 @page "/"
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
 
 <MudText Typo="Typo.h4" Class="font-weight-bold mb-6">Дашборд</MudText>
 
@@ -49,11 +52,33 @@
     private int _ordersToday;
     private int _totalUsers;
     private int _index = -1;
+    private HubConnection? _hubConnection;
 
     private List<ChartSeries<double>> _series = new();
     private string[] _xAxisLabels = Array.Empty<string>();
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On("NewOrderReceived", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadStats();
+                StateHasChanged();
+            });
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadStats()
     {
         using var db = await DbFactory.CreateDbContextAsync();
 
@@ -85,5 +110,13 @@
         {
             new ChartSeries<double> { Name = "Заказы", Data = orderCounts }
         };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 }
