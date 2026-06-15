@@ -56,6 +56,14 @@ namespace OmniCart.Infrastructure
                 entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Stock).HasDefaultValue(0);
                 entity.HasIndex(e => e.CreatedAt);
+
+                entity.HasData(
+                    new Product { Id = 1, Name = "iPhone 15 Pro", Description = "Флагманский смартфон от Apple", Price = 120000m, Stock = 10, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 2, Name = "MacBook Air M3", Description = "Тонкий и легкий ноутбук с чипом M3", Price = 150000m, Stock = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 3, Name = "AirPods Pro 2", Description = "Наушники с активным шумоподавлением", Price = 25000m, Stock = 20, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 4, Name = "Sony WH-1000XM5", Description = "Лучшие полноразмерные наушники с шумоподавлением", Price = 35000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 5, Name = "Samsung Galaxy S24 Ultra", Description = "Ультимативный флагман на Android", Price = 110000m, Stock = 8, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                );
             });
 
             modelBuilder.Entity<Order>(entity =>
