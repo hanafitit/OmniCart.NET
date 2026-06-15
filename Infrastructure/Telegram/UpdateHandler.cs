@@ -5,6 +5,8 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Configuration;
 using DomainUser = OmniCart.Domain.Entities.User;
 
 namespace OmniCart.Infrastructure.Telegram;
@@ -15,17 +17,20 @@ public class UpdateHandler
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UpdateHandler> _logger;
     private readonly GoogleSheetsService _googleSheetsService;
+    private readonly IConfiguration _configuration;
 
     public UpdateHandler(
         ITelegramBotClient botClient,
         IServiceProvider serviceProvider,
         ILogger<UpdateHandler> logger,
-        GoogleSheetsService googleSheetsService)
+        GoogleSheetsService googleSheetsService,
+        IConfiguration configuration)
     {
         _botClient = botClient;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _googleSheetsService = googleSheetsService;
+        _configuration = configuration;
     }
 
     public async Task HandleUpdateAsync(Update update, CancellationToken ct)
@@ -625,6 +630,9 @@ public class UpdateHandler
         // Логирование в Google Sheets
         await _googleSheetsService.AddOrderAsync(order, user, orderItems);
 
+        // Уведомление через SignalR
+        await NotifyAdminAboutNewOrderAsync();
+
         user.CurrentStep = (int)UserStep.MainPage;
         user.DeliveryAddress = address;
         user.UpdatedAt = DateTime.UtcNow;
@@ -635,6 +643,28 @@ public class UpdateHandler
             text: $"✅ Заказ оформлен!\n\nАдрес: {address}\nСумма: {total} руб.\nСтатус: Created",
             linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
             cancellationToken: ct);
+    }
+
+    private async Task NotifyAdminAboutNewOrderAsync()
+    {
+        try
+        {
+            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://web:8080/orderhub";
+
+            await using var connection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .Build();
+
+            await connection.StartAsync();
+            await connection.InvokeAsync("SendNewOrderNotification");
+            await connection.StopAsync();
+
+            _logger.LogInformation("🔔 Отправлено уведомление о новом заказе в админ-панель");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Ошибка при отправке уведомления через SignalR: {Message}", ex.Message);
+        }
     }
 
     private async Task<DomainUser> GetOrCreateUserAsync(
