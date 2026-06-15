@@ -2,7 +2,10 @@
 @using OmniCart.Domain.Entities
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
+@using MudBlazor
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudText Typo="Typo.h3" GutterBottom="true">Заказы</MudText>
 
@@ -24,13 +27,16 @@
             <MudChip T="string" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
         </MudTd>
         <MudTd DataLabel="Действия">
-            <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense">
-                <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
-                <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
-                <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
-                <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
-                <MudSelectItem Value="@("Cancelled")">Отменен</MudSelectItem>
-            </MudSelect>
+            <div class="d-flex align-center">
+                <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense" Class="mr-2" Style="width: 150px;">
+                    <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
+                    <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
+                    <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
+                    <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
+                    <MudSelectItem Value="@("Cancelled")">Отменен</MudSelectItem>
+                </MudSelect>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteOrder(context))" Size="Size.Small" />
+            </div>
         </MudTd>
     </RowTemplate>
 </MudTable>
@@ -64,6 +70,32 @@
             existingOrder.Status = newStatus;
             await db.SaveChangesAsync();
             order.Status = newStatus;
+            Snackbar.Add($"Статус заказа #{order.Id} изменен на {newStatus}", Severity.Info);
+        }
+    }
+
+    private async Task DeleteOrder(Order order)
+    {
+        var parameters = new DialogParameters {
+            { "ContentText", $"Вы уверены, что хотите удалить заказ #{order.Id}?" },
+            { "ButtonText", "Удалить" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Подтверждение", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+            var o = await db.Orders.FindAsync(order.Id);
+            if (o != null)
+            {
+                db.Orders.Remove(o);
+                await db.SaveChangesAsync();
+                Snackbar.Add("Заказ удален", Severity.Success);
+                await LoadOrders();
+            }
         }
     }
 
