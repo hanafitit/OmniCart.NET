@@ -15,17 +15,20 @@ public class UpdateHandler
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UpdateHandler> _logger;
     private readonly GoogleSheetsService _googleSheetsService;
+    private readonly IOrderNotificationService _orderNotificationService;
 
     public UpdateHandler(
         ITelegramBotClient botClient,
         IServiceProvider serviceProvider,
         ILogger<UpdateHandler> logger,
-        GoogleSheetsService googleSheetsService)
+        GoogleSheetsService googleSheetsService,
+        IOrderNotificationService orderNotificationService)
     {
         _botClient = botClient;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _googleSheetsService = googleSheetsService;
+        _orderNotificationService = orderNotificationService;
     }
 
     public async Task HandleUpdateAsync(Update update, CancellationToken ct)
@@ -515,6 +518,10 @@ public class UpdateHandler
 
                 // Логирование в Google Sheets
                 await _googleSheetsService.AddOrderAsync(order, user, orderItems);
+
+                // Уведомление владельца и Dashboard
+                order.User = user; // Привязываем пользователя для уведомления
+                _orderNotificationService.NotifyNewOrder(order);
 
                 user.CurrentStep = (int)UserStep.MainPage;
                 user.DeliveryAddress = text;

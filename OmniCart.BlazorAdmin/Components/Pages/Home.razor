@@ -1,78 +1,125 @@
 @page "/"
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.SignalR.Client
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
 
-<MudText Typo="Typo.h3" GutterBottom="true">Дашборд</MudText>
+<MudText Typo="Typo.h3" GutterBottom="true">Панель управления</MudText>
 
 <MudGrid>
     <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-primary); color: white;">
-            <MudText Typo="Typo.h6">Выручка</MudText>
-            <MudText Typo="Typo.h4">@_totalRevenue.ToString("N0") руб.</MudText>
-        </MudCard>
+        <MudPaper Elevation="2" Class="pa-4 d-flex flex-column align-center justify-center" Style="height: 150px; background-color: #594AE2; color: white;">
+            <MudText Typo="Typo.h6">Выручка за всё время</MudText>
+            <MudText Typo="Typo.h3">@_totalRevenue.ToString("N0") ₽</MudText>
+        </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-secondary); color: white;">
-            <MudText Typo="Typo.h6">Заказов сегодня</MudText>
-            <MudText Typo="Typo.h4">@_ordersToday</MudText>
-        </MudCard>
+        <MudPaper Elevation="2" Class="pa-4 d-flex flex-column align-center justify-center" Style="height: 150px; background-color: #00C853; color: white;">
+            <MudText Typo="Typo.h6">Количество заказов</MudText>
+            <MudText Typo="Typo.h3">@_totalOrders</MudText>
+        </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-info); color: white;">
-            <MudText Typo="Typo.h6">Всего клиентов</MudText>
-            <MudText Typo="Typo.h4">@_totalUsers</MudText>
-        </MudCard>
+        <MudPaper Elevation="2" Class="pa-4 d-flex flex-column align-center justify-center" Style="height: 150px; background-color: #FF9100; color: white;">
+            <MudText Typo="Typo.h6">Средний чек</MudText>
+            <MudText Typo="Typo.h3">@_averageCheck.ToString("N0") ₽</MudText>
+        </MudPaper>
     </MudItem>
 
     <MudItem xs="12">
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Статистика заказов за последние 7 дней</MudText>
-            <MudChart ChartType="ChartType.Bar" ChartSeries="@_series" @bind-SelectedIndex="_index" XAxisLabels="@_xAxisLabels" Width="100%" Height="350px"></MudChart>
+        <MudPaper Class="pa-4" Style="height: 450px;">
+            <MudText Typo="Typo.h6" GutterBottom="true">Динамика продаж (последние 7 дней)</MudText>
+            <div style="height: 350px;">
+                <canvas id="salesChart"></canvas>
+            </div>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
 @code {
     private decimal _totalRevenue;
-    private int _ordersToday;
-    private int _totalUsers;
-    private int _index = -1;
-
-    private List<ChartSeries<double>> _series = new();
-    private string[] _xAxisLabels = Array.Empty<string>();
+    private int _totalOrders;
+    private decimal _averageCheck;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<int, decimal, string>("NewOrder", async (orderId, total, customer) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await JSRuntime.InvokeVoidAsync("dashboard.playNotificationSound");
+                await LoadData();
+                StateHasChanged();
+            });
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RenderChart();
+        }
+    }
+
+    private async Task LoadData()
     {
         using var db = await DbFactory.CreateDbContextAsync();
 
         _totalRevenue = await db.Orders.SumAsync(o => o.TotalPrice);
+        _totalOrders = await db.Orders.CountAsync();
+        _averageCheck = _totalOrders > 0 ? _totalRevenue / _totalOrders : 0;
 
-        var todayUtc = DateTime.UtcNow.Date;
-        _ordersToday = await db.Orders.CountAsync(o => o.CreatedAt >= todayUtc);
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await RenderChart();
+        }
+    }
 
-        _totalUsers = await db.Users.CountAsync();
+    private async Task RenderChart()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
 
-        // Подготовка данных для графика (одним запросом)
-        var sevenDaysAgo = todayUtc.AddDays(-6);
+        var today = DateTime.UtcNow.Date;
+        var sevenDaysAgo = today.AddDays(-6);
 
-        var ordersData = await db.Orders
+        var salesData = await db.Orders
             .Where(o => o.CreatedAt >= sevenDaysAgo)
             .GroupBy(o => o.CreatedAt.Date)
-            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .Select(g => new { Date = g.Key, Total = g.Sum(o => o.TotalPrice) })
             .ToListAsync();
 
-        var last7Days = Enumerable.Range(0, 7)
-            .Select(i => sevenDaysAgo.AddDays(i))
-            .ToList();
+        var labels = new List<string>();
+        var data = new List<decimal>();
 
-        _xAxisLabels = last7Days.Select(d => d.ToString("dd.MM")).ToArray();
-
-        var orderCounts = last7Days.Select(d => (double)(ordersData.FirstOrDefault(od => od.Date == d)?.Count ?? 0)).ToArray();
-
-        _series = new List<ChartSeries<double>>
+        for (int i = 0; i < 7; i++)
         {
-            new ChartSeries<double> { Name = "Заказы", Data = orderCounts }
-        };
+            var date = sevenDaysAgo.AddDays(i);
+            labels.Add(date.ToString("dd.MM"));
+            data.Add(salesData.FirstOrDefault(s => s.Date == date)?.Total ?? 0);
+        }
+
+        await JSRuntime.InvokeVoidAsync("dashboard.renderSalesChart", "salesChart", labels, data);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 }

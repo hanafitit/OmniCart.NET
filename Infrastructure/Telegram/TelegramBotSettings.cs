@@ -13,4 +13,7 @@ public class TelegramBotSettings
 
     /// <summary>Интервал опроса (сек)</summary>
     public int PollingIntervalSeconds { get; set; } = 1;
+
+    /// <summary>ChatId владельца для получения уведомлений</summary>
+    public long OwnerChatId { get; set; }
 }

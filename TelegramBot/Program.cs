@@ -35,6 +35,10 @@ var builder = Host.CreateDefaultBuilder(args)
             context.Configuration.GetSection("GoogleSheetsSettings"));
         services.AddScoped<GoogleSheetsService>();
 
+        services.AddSingleton<OrderNotificationWorker>();
+        services.AddSingleton<IOrderNotificationService>(sp => sp.GetRequiredService<OrderNotificationWorker>());
+        services.AddHostedService(sp => sp.GetRequiredService<OrderNotificationWorker>());
+
         services.AddHostedService<TelegramBotWorker>();
 
         // Logging

@@ -2,6 +2,8 @@ using OmniCart.BlazorAdmin.Components;
 using MudBlazor.Services;
 using OmniCart.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using OmniCart.BlazorAdmin.Hubs;
+using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,13 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddSignalR();
+
+builder.Services.AddResponseCompression(opts =>
+{
+    opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+        ["application/octet-stream"]);
+});
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -44,10 +53,14 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseResponseCompression();
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapHub<OrderHub>("/orderhub");
 
 app.Run();
