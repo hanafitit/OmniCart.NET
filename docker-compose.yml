@@ -17,6 +17,7 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Database=neondb;Username=neondb_owner;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD};"
       TelegramBotSettings__Token: "${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}"
+      SignalR__HubUrl: "http://web:8080/orderhub"
 
   web:
     build:

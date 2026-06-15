@@ -10,6 +10,7 @@ namespace OmniCart.Infrastructure
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<UserAddress> UserAddresses { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
@@ -46,6 +47,16 @@ namespace OmniCart.Infrastructure
 
                 entity.Property(e => e.PhoneNumber)
                     .HasMaxLength(20);
+            });
+
+            modelBuilder.Entity<UserAddress>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.AddressLine).IsRequired().HasMaxLength(500);
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.Addresses)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Product>(entity =>
