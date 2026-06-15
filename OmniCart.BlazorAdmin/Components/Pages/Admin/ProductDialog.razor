@@ -1,0 +1,64 @@
+@using OmniCart.Domain.Entities
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(Product.Id == 0 ? "Добавить товар" : "Редактировать товар")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="Product.Name" Label="Название" Required="true" />
+        <MudTextField @bind-Value="Product.Description" Label="Описание" Lines="3" />
+        <MudNumericField @bind-Value="Product.Price" Label="Цена" Format="F2" Min="0" />
+        <MudNumericField @bind-Value="Product.Stock" Label="Остаток на складе" Min="0" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Сохранить</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Product Product { get; set; } = new() { Name = "", Description = "" };
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(Product.Name))
+        {
+            Snackbar.Add("Название обязательно", Severity.Error);
+            return;
+        }
+
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        if (Product.Id == 0)
+        {
+            Product.CreatedAt = DateTime.UtcNow;
+            db.Products.Add(Product);
+        }
+        else
+        {
+            db.Products.Update(Product);
+        }
+
+        try
+        {
+            await db.SaveChangesAsync();
+            Snackbar.Add("Товар сохранен", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Ошибка при сохранении: {ex.Message}", Severity.Error);
+        }
+    }
+}

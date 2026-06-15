@@ -2,8 +2,10 @@
 @using OmniCart.Domain.Entities
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
+@using MudBlazor
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudText Typo="Typo.h3" GutterBottom="true">Товары</MudText>
 
@@ -31,28 +33,9 @@
     </RowTemplate>
 </MudTable>
 
-<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">@(_editingProduct.Id == 0 ? "Добавить товар" : "Редактировать товар")</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudTextField @bind-Value="_editingProduct.Name" Label="Название" Required="true" />
-        <MudTextField @bind-Value="_editingProduct.Description" Label="Описание" Lines="3" />
-        <MudNumericField @bind-Value="_editingProduct.Price" Label="Цена" Format="F2" Min="0" />
-        <MudNumericField @bind-Value="_editingProduct.Stock" Label="Остаток на складе" Min="0" />
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Отмена</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProduct">Сохранить</MudButton>
-    </DialogActions>
-</MudDialog>
-
 @code {
     private List<Product> _products = new();
     private bool _loading = true;
-    private bool _dialogVisible;
-    private Product _editingProduct = new() { Name = "", Description = "" };
-    private readonly DialogOptions _dialogOptions = new() { FullWidth = true };
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,62 +50,69 @@
         _loading = false;
     }
 
-    private void AddProduct()
+    private async Task AddProduct()
     {
-        _editingProduct = new Product { Name = "", Description = "", CreatedAt = DateTime.UtcNow };
-        _dialogVisible = true;
-    }
-
-    private void EditProduct(Product product)
-    {
-        _editingProduct = new Product
+        var parameters = new DialogParameters<ProductDialog>
         {
-            Id = product.Id,
-            Name = product.Name,
-            Description = product.Description,
-            Price = product.Price,
-            Stock = product.Stock,
-            CreatedAt = product.CreatedAt
+            { x => x.Product, new Product { Name = "", Description = "" } }
         };
-        _dialogVisible = true;
-    }
 
-    private async Task DeleteProduct(Product product)
-    {
-        using var db = await DbFactory.CreateDbContextAsync();
-        var p = await db.Products.FindAsync(product.Id);
-        if (p != null)
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Добавить товар", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
         {
-            db.Products.Remove(p);
-            await db.SaveChangesAsync();
-            Snackbar.Add("Товар удален", Severity.Success);
             await LoadProducts();
         }
     }
 
-    private void Cancel() => _dialogVisible = false;
-
-    private async Task SaveProduct()
+    private async Task EditProduct(Product product)
     {
-        if (string.IsNullOrWhiteSpace(_editingProduct.Name))
+        var parameters = new DialogParameters<ProductDialog>
         {
-            Snackbar.Add("Название обязательно", Severity.Error);
-            return;
-        }
+            { x => x.Product, new Product
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Description = product.Description,
+                    Price = product.Price,
+                    Stock = product.Stock,
+                    CreatedAt = product.CreatedAt
+                }
+            }
+        };
 
-        using var db = await DbFactory.CreateDbContextAsync();
-        if (_editingProduct.Id == 0)
-        {
-            db.Products.Add(_editingProduct);
-        }
-        else
-        {
-            db.Products.Update(_editingProduct);
-        }
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Редактировать товар", parameters);
+        var result = await dialog.Result;
 
-        await db.SaveChangesAsync();
-        _dialogVisible = false;
-        Snackbar.Add("Товар сохранен", Severity.Success);
-        await LoadProducts();
+        if (result is { Canceled: false })
+        {
+            await LoadProducts();
+        }
+    }
+
+    private async Task DeleteProduct(Product product)
+    {
+        var parameters = new DialogParameters {
+            { "ContentText", $"Вы уверены, что хотите удалить товар '{product.Name}'?" },
+            { "ButtonText", "Удалить" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Подтверждение", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+            var p = await db.Products.FindAsync(product.Id);
+            if (p != null)
+            {
+                db.Products.Remove(p);
+                await db.SaveChangesAsync();
+                Snackbar.Add("Товар удален", Severity.Success);
+                await LoadProducts();
+            }
+        }
     }
 }
