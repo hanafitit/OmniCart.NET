@@ -76,26 +76,14 @@
 
     private async Task DeleteOrder(Order order)
     {
-        var parameters = new DialogParameters {
-            { "ContentText", $"Вы уверены, что хотите удалить заказ #{order.Id}?" },
-            { "ButtonText", "Удалить" },
-            { "Color", Color.Error }
-        };
-
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Подтверждение", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false })
+        using var db = await DbFactory.CreateDbContextAsync();
+        var o = await db.Orders.FindAsync(order.Id);
+        if (o != null)
         {
-            using var db = await DbFactory.CreateDbContextAsync();
-            var o = await db.Orders.FindAsync(order.Id);
-            if (o != null)
-            {
-                db.Orders.Remove(o);
-                await db.SaveChangesAsync();
-                Snackbar.Add("Заказ удален", Severity.Success);
-                await LoadOrders();
-            }
+            db.Orders.Remove(o);
+            await db.SaveChangesAsync();
+            Snackbar.Add("Заказ удален", Severity.Success);
+            await LoadOrders();
         }
     }
 
