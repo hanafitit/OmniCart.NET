@@ -7,13 +7,15 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<MudText Typo="Typo.h3" GutterBottom="true">Товары</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4" Class="font-weight-bold">Товары</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddProduct" StartIcon="@Icons.Material.Filled.Add">
+            Добавить товар
+        </MudButton>
+    </div>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddProduct" StartIcon="@Icons.Material.Filled.Add" Class="mb-4">
-    Добавить товар
-</MudButton>
-
-<MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
+    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="1" Class="rounded-lg">
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Название</MudTh>
@@ -27,11 +29,12 @@
         <MudTd DataLabel="Цена">@context.Price руб.</MudTd>
         <MudTd DataLabel="Остаток">@context.Stock шт.</MudTd>
         <MudTd DataLabel="Действия">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => EditProduct(context))" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteProduct(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => EditProduct(context))" Size="Size.Small" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteProduct(context))" Size="Size.Small" />
         </MudTd>
     </RowTemplate>
 </MudTable>
+</MudContainer>
 
 @code {
     private List<Product> _products = new();
