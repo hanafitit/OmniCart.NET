@@ -37,6 +37,9 @@ public class User
 
     /// <summary>Активен ли пользователь</summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Список сохраненных адресов</summary>
+    public ICollection<UserAddress> Addresses { get; set; } = [];
 }
 
 /// <summary>
@@ -47,5 +50,6 @@ public enum UserStep
     MainPage = 0,
     EnteringDeliveryAddress = 1,
     EnteringPayment = 2,
-    BrowsingCatalog = 3
+    BrowsingCatalog = 3,
+    SelectingDeliveryAddress = 4
 }
