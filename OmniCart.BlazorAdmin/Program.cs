@@ -2,6 +2,7 @@ using OmniCart.BlazorAdmin.Components;
 using MudBlazor.Services;
 using OmniCart.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using OmniCart.BlazorAdmin.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddSignalR();
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -49,5 +51,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapHub<OrderHub>("/orderhub");
 
 app.Run();

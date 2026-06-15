@@ -3,7 +3,10 @@
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -46,10 +49,28 @@
 @code {
     private List<Order> _orders = new();
     private bool _loading = true;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadOrders();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On("NewOrderReceived", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadOrders();
+                StateHasChanged();
+                Snackbar.Add("Получен новый заказ!", Severity.Success);
+            });
+        });
+
+        await _hubConnection.StartAsync();
     }
 
     private async Task LoadOrders()
@@ -98,4 +119,12 @@
         "Cancelled" => Color.Error,
         _ => Color.Default
     };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
 }
