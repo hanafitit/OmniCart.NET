@@ -1,33 +1,47 @@
 @page "/"
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
 
-<MudText Typo="Typo.h3" GutterBottom="true">Дашборд</MudText>
+<MudText Typo="Typo.h4" Class="font-weight-bold mb-6">Дашборд</MudText>
 
 <MudGrid>
-    <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-primary); color: white;">
-            <MudText Typo="Typo.h6">Выручка</MudText>
-            <MudText Typo="Typo.h4">@_totalRevenue.ToString("N0") руб.</MudText>
-        </MudCard>
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="text-secondary">Выручка</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_totalRevenue.ToString("N0") руб.</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Color="Color.Primary" />
+        </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-secondary); color: white;">
-            <MudText Typo="Typo.h6">Заказов сегодня</MudText>
-            <MudText Typo="Typo.h4">@_ordersToday</MudText>
-        </MudCard>
+
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="text-secondary">Заказов сегодня</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_ordersToday</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Secondary" />
+        </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="4">
-        <MudCard Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-info); color: white;">
-            <MudText Typo="Typo.h6">Всего клиентов</MudText>
-            <MudText Typo="Typo.h4">@_totalUsers</MudText>
-        </MudCard>
+
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="text-secondary">Всего клиентов</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_totalUsers</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Info" />
+        </MudPaper>
     </MudItem>
 
     <MudItem xs="12">
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Статистика заказов за последние 7 дней</MudText>
+        <MudPaper Class="pa-4 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Статистика заказов за последние 7 дней</MudText>
             <MudChart ChartType="ChartType.Bar" ChartSeries="@_series" @bind-SelectedIndex="_index" XAxisLabels="@_xAxisLabels" Width="100%" Height="350px"></MudChart>
         </MudPaper>
     </MudItem>
@@ -38,11 +52,33 @@
     private int _ordersToday;
     private int _totalUsers;
     private int _index = -1;
+    private HubConnection? _hubConnection;
 
     private List<ChartSeries<double>> _series = new();
     private string[] _xAxisLabels = Array.Empty<string>();
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On("NewOrderReceived", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadStats();
+                StateHasChanged();
+            });
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadStats()
     {
         using var db = await DbFactory.CreateDbContextAsync();
 
@@ -74,5 +110,13 @@
         {
             new ChartSeries<double> { Name = "Заказы", Data = orderCounts }
         };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 }
