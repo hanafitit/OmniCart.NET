@@ -70,6 +70,7 @@ namespace OmniCart.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.DeliveryAddress).HasMaxLength(500);
             });
 
             modelBuilder.Entity<OrderItem>(entity =>

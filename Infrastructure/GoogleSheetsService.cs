@@ -42,7 +42,7 @@ public class GoogleSheetsService
                 user.TelegramUserId,
                 string.Join(", ", items.Select(i => i.Product?.Name ?? "Товар")),
                 order.TotalPrice,
-                user.DeliveryAddress ?? ""
+                order.DeliveryAddress ?? ""
             };
 
             valueRange.Values = new List<IList<object>> { rowValues };

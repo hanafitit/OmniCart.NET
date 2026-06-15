@@ -495,6 +495,7 @@ public class UpdateHandler
                     User = null!,
                     TotalPrice = total,
                     Status = "Created",
+                    DeliveryAddress = text,
                     CreatedAt = DateTime.UtcNow
                 };
 
