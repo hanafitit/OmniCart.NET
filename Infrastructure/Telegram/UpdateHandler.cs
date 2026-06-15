@@ -360,14 +360,88 @@ public class UpdateHandler
 
         if (callbackData == "checkout")
         {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var addresses = await db.UserAddresses
+                .Where(a => a.UserId == user.Id)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync(ct);
+
+            if (addresses.Count == 0)
+            {
+                user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
+                await SaveUserAsync(user, ct);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: "📍 Введите адрес доставки:",
+                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                    cancellationToken: ct);
+            }
+            else
+            {
+                user.CurrentStep = (int)UserStep.SelectingDeliveryAddress;
+                await SaveUserAsync(user, ct);
+
+                var buttons = addresses.Select(a =>
+                    new[] { InlineKeyboardButton.WithCallbackData(a.AddressLine, $"select_address_{a.Id}") })
+                    .ToList();
+
+                buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("➕ Добавить новый адрес", "add_new_address") });
+
+                var keyboard = new InlineKeyboardMarkup(buttons);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: "📍 Выберите адрес доставки или введите новый:",
+                    replyMarkup: keyboard,
+                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                    cancellationToken: ct);
+            }
+            return;
+        }
+
+        if (callbackData == "add_new_address")
+        {
             user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
             await SaveUserAsync(user, ct);
 
             await _botClient.SendMessage(
                 chatId: chatId,
-                text: "📍 Введите адрес доставки:",
+                text: "📍 Введите новый адрес доставки:",
                 linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
                 cancellationToken: ct);
+            return;
+        }
+
+        if (callbackData.StartsWith("select_address_", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!int.TryParse(callbackData["select_address_".Length..], out var addressId))
+            {
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: "⚠️ Неверный адрес.",
+                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                    cancellationToken: ct);
+                return;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var address = await db.UserAddresses.FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == user.Id, ct);
+            if (address == null)
+            {
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: "⚠️ Адрес не найден.",
+                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                    cancellationToken: ct);
+                return;
+            }
+
+            await CreateOrderAsync(user, chatId, address.AddressLine, ct);
             return;
         }
     }
@@ -469,64 +543,18 @@ public class UpdateHandler
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                var cartItems = await db.CartItems
-                    .Include(ci => ci.Product)
-                    .Where(ci => ci.UserId == user.Id)
-                    .ToListAsync(ct);
-
-                if (cartItems.Count == 0)
-                {
-                    user.CurrentStep = (int)UserStep.MainPage;
-                    await SaveUserAsync(user, ct);
-
-                    await _botClient.SendMessage(
-                        chatId: chatId,
-                        text: "🛒 Ваша корзина пуста. Заказ не создан.",
-                        linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-                        cancellationToken: ct);
-                    return;
-                }
-
-                var total = cartItems.Sum(ci => ci.Product.Price * ci.Quantity);
-
-                var order = new Order
+                // Сохраняем новый адрес
+                var newAddress = new UserAddress
                 {
                     UserId = user.Id,
                     User = null!,
-                    TotalPrice = total,
-                    Status = "Created",
-                    DeliveryAddress = text,
+                    AddressLine = text,
                     CreatedAt = DateTime.UtcNow
                 };
-
-                var orderItems = cartItems.Select(ci => new OrderItem
-                {
-                    Order = order,
-                    ProductId = ci.ProductId,
-                    Product = null!,
-                    Quantity = ci.Quantity,
-                    Price = ci.Product.Price
-                }).ToList();
-
-                order.OrderItems = orderItems;
-
-                db.Orders.Add(order);
-                db.CartItems.RemoveRange(cartItems);
+                db.UserAddresses.Add(newAddress);
                 await db.SaveChangesAsync(ct);
 
-                // Логирование в Google Sheets
-                await _googleSheetsService.AddOrderAsync(order, user, orderItems);
-
-                user.CurrentStep = (int)UserStep.MainPage;
-                user.DeliveryAddress = text;
-                user.UpdatedAt = DateTime.UtcNow;
-                await SaveUserAsync(user, ct);
-
-                await _botClient.SendMessage(
-                    chatId: chatId,
-                    text: $"✅ Заказ оформлен!\n\nАдрес: {text}\nСумма: {total} руб.\nСтатус: Created",
-                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-                    cancellationToken: ct);
+                await CreateOrderAsync(user, chatId, text, ct);
                 break;
             }
 
@@ -538,6 +566,75 @@ public class UpdateHandler
                     cancellationToken: ct);
                 break;
         }
+    }
+
+    private async Task CreateOrderAsync(
+        DomainUser user,
+        long chatId,
+        string address,
+        CancellationToken ct)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var cartItems = await db.CartItems
+            .Include(ci => ci.Product)
+            .Where(ci => ci.UserId == user.Id)
+            .ToListAsync(ct);
+
+        if (cartItems.Count == 0)
+        {
+            user.CurrentStep = (int)UserStep.MainPage;
+            await SaveUserAsync(user, ct);
+
+            await _botClient.SendMessage(
+                chatId: chatId,
+                text: "🛒 Ваша корзина пуста. Заказ не создан.",
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                cancellationToken: ct);
+            return;
+        }
+
+        var total = cartItems.Sum(ci => ci.Product.Price * ci.Quantity);
+
+        var order = new Order
+        {
+            UserId = user.Id,
+            User = null!,
+            TotalPrice = total,
+            Status = "Created",
+            DeliveryAddress = address,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var orderItems = cartItems.Select(ci => new OrderItem
+        {
+            Order = order,
+            ProductId = ci.ProductId,
+            Product = null!,
+            Quantity = ci.Quantity,
+            Price = ci.Product.Price
+        }).ToList();
+
+        order.OrderItems = orderItems;
+
+        db.Orders.Add(order);
+        db.CartItems.RemoveRange(cartItems);
+        await db.SaveChangesAsync(ct);
+
+        // Логирование в Google Sheets
+        await _googleSheetsService.AddOrderAsync(order, user, orderItems);
+
+        user.CurrentStep = (int)UserStep.MainPage;
+        user.DeliveryAddress = address;
+        user.UpdatedAt = DateTime.UtcNow;
+        await SaveUserAsync(user, ct);
+
+        await _botClient.SendMessage(
+            chatId: chatId,
+            text: $"✅ Заказ оформлен!\n\nАдрес: {address}\nСумма: {total} руб.\nСтатус: Created",
+            linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+            cancellationToken: ct);
     }
 
     private async Task<DomainUser> GetOrCreateUserAsync(
