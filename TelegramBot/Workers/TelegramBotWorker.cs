@@ -32,6 +32,9 @@ public class TelegramBotWorker : BackgroundService
             var me = await _botClient.GetMe(cancellationToken: stoppingToken);
             _logger.LogInformation("✅ Telegram-бот запущен: @{BotUsername}", me.Username);
 
+            // Сбрасываем возможные конфликты соединений
+            await _botClient.DeleteWebhook(cancellationToken: stoppingToken);
+
             var receiverOptions = new ReceiverOptions
             {
                 AllowedUpdates = new[] 

@@ -3,6 +3,7 @@ using OmniCart.Infrastructure.Telegram;
 using OmniCart.TelegramBot.Workers;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
+using OmniCart.Domain.Entities;
 
 var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
@@ -22,23 +23,23 @@ var builder = Host.CreateDefaultBuilder(args)
             options.UseNpgsql(connectionString);
         });
 
-        // Telegram Bot
-        services.Configure<TelegramBotSettings>(
-            context.Configuration.GetSection("TelegramBotSettings"));
-
-        services.AddSingleton<ITelegramBotClient>(
-            new TelegramBotClient(telegramSettings.Token));
-
-        services.AddScoped<UpdateHandler>();
-
+        // Конфигурация и сервис Google Sheets
         services.Configure<GoogleSheetsSettings>(
             context.Configuration.GetSection("GoogleSheetsSettings"));
-        services.AddScoped<GoogleSheetsService>();
+        services.AddSingleton<GoogleSheetsService>(); // Регистрируем GoogleSheetsService
 
-        services.AddHostedService<TelegramBotWorker>();
+            // Telegram Bot
+            services.Configure<TelegramBotSettings>(
+            context.Configuration.GetSection("TelegramBotSettings"));
 
-        // Logging
-        services.AddLogging();
+            services.AddSingleton<ITelegramBotClient>(
+            new TelegramBotClient(telegramSettings.Token));
+
+            services.AddSingleton<UpdateHandler>();
+            services.AddHostedService<TelegramBotWorker>();
+
+            // Logging
+            services.AddLogging();
     });
 
 var host = builder.Build();
@@ -50,7 +51,14 @@ using (var scope = host.Services.CreateScope())
     try
     {
         await db.Database.MigrateAsync();
-        Console.WriteLine("✅ Миграции БД применены");
+        
+        var productCount = await db.Products.CountAsync();
+        Console.WriteLine($"✅ Миграции БД применены. Товаров в базе: {productCount}");
+        
+        if (productCount == 0)
+        {
+            Console.WriteLine("⚠️ Внимание: Таблица товаров пуста! Возможно, нужно переприменить миграции.");
+        }
     }
     catch (Exception ex)
     {
@@ -61,4 +69,3 @@ using (var scope = host.Services.CreateScope())
 
 Console.WriteLine("🚀 TelegramBot запускается...");
 await host.RunAsync();
-
