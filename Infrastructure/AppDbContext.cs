@@ -73,7 +73,12 @@ namespace OmniCart.Infrastructure
                     new Product { Id = 2, Name = "MacBook Air M3", Description = "Тонкий и легкий ноутбук с чипом M3", Price = 150000m, Stock = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 3, Name = "AirPods Pro 2", Description = "Наушники с активным шумоподавлением", Price = 25000m, Stock = 20, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 4, Name = "Sony WH-1000XM5", Description = "Лучшие полноразмерные наушники с шумоподавлением", Price = 35000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new Product { Id = 5, Name = "Samsung Galaxy S24 Ultra", Description = "Ультимативный флагман на Android", Price = 110000m, Stock = 8, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                    new Product { Id = 5, Name = "Samsung Galaxy S24 Ultra", Description = "Ультимативный флагман на Android", Price = 110000m, Stock = 8, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 6, Name = "iPad Pro M4", Description = "Самый мощный планшет от Apple", Price = 130000m, Stock = 7, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 7, Name = "Apple Watch Series 9", Description = "Умные часы для здоровья и спорта", Price = 45000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 8, Name = "Logitech MX Master 3S", Description = "Лучшая мышь для продуктивности", Price = 12000m, Stock = 25, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 9, Name = "PlayStation 5 Slim", Description = "Игровая консоль нового поколения", Price = 55000m, Stock = 10, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 10, Name = "Nintendo Switch OLED", Description = "Портативная игровая приставка", Price = 35000m, Stock = 12, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
                 );
             });
 

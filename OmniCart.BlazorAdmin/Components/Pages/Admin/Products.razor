@@ -15,7 +15,11 @@
         </MudButton>
     </div>
 
-    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="1" Class="rounded-lg">
+    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="1" Class="rounded-lg" Filter="new Func<Product,bool>(FilterFunc1)">
+    <ToolBarContent>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Поиск товара..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Название</MudTh>
@@ -39,6 +43,7 @@
 @code {
     private List<Product> _products = new();
     private bool _loading = true;
+    private string _searchString = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,5 +112,20 @@
             Snackbar.Add("Товар удален", Severity.Success);
             await LoadProducts();
         }
+    }
+
+    private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
+
+    private bool FilterFunc(Product product, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (product.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (product.Description?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        if ($"{product.Id} {product.Price}".Contains(searchString))
+            return true;
+        return false;
     }
 }
