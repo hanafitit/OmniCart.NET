@@ -37,14 +37,18 @@ public class UpdateHandler
     {
         try
         {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
             if (update.Message is { } message)
             {
                 var chatId = message.Chat.Id;
                 var telegramUserId = message.From?.Id ?? 0;
 
-                var user = await GetOrCreateUserAsync(
+                var user = await GetOrCreateUser(
+                    db,
                     telegramUserId,
-                    message.From,
+                    message.From, 
                     ct);
 
                 if (message.Text is { } text)
@@ -52,19 +56,19 @@ public class UpdateHandler
                     switch (text)
                     {
                         case "/start":
-                            await HandleStartCommandAsync(user, chatId, ct);
+                            await HandleStartCommandAsync(db, user, chatId, ct);
                             return;
 
                         case "🛍️ Каталог":
-                            await HandleCatalogAsync(user, chatId, ct);
+                            await HandleCatalogAsync(db, user, chatId, ct);
                             return;
 
                         case "🛒 Корзина":
-                            await HandleCartAsync(user, chatId, ct);
+                            await HandleCartAsync(db, user, chatId, ct);
                             return;
 
                         case "📋 Мои заказы":
-                            await HandleMyOrdersAsync(user, chatId, ct);
+                            await HandleMyOrdersAsync(db, user, chatId, ct);
                             return;
 
                         case "👤 Профиль":
@@ -76,7 +80,7 @@ public class UpdateHandler
                             return;
 
                         default:
-                            await HandleByCurrentStepAsync(user, chatId, text, ct);
+                            await HandleByCurrentStepAsync(db, user, chatId, text, ct);
                             return;
                     }
                 }
@@ -103,14 +107,15 @@ public class UpdateHandler
                 var chatId = query.Message.Chat.Id;
                 var telegramUserId = query.From?.Id ?? 0;
 
-                var user = await GetOrCreateUserAsync(
+                var user = await GetOrCreateUser(
+                    db,
                     telegramUserId,
                     query.From,
                     ct);
 
                 if (!string.IsNullOrEmpty(query.Data))
                 {
-                    await HandleCallbackAsync(user, chatId, query.Data, ct);
+                    await HandleCallbackAsync(db, user, chatId, query.Data, ct);
                 }
 
                 await _botClient.AnswerCallbackQuery(
@@ -124,13 +129,12 @@ public class UpdateHandler
         }
     }
 
-    private async Task HandleStartCommandAsync(DomainUser user, long chatId, CancellationToken ct)
+    private async Task HandleStartCommandAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
         user.CurrentStep = (int)UserStep.MainPage;
         user.UpdatedAt = DateTime.UtcNow;
         user.IsActive = true;
-
-        await SaveUserAsync(user, ct);
+        await db.SaveChangesAsync(ct);
 
         var keyboard = new ReplyKeyboardMarkup(new[]
         {
@@ -158,24 +162,22 @@ public class UpdateHandler
         _logger.LogInformation("✅ Пользователь {TelegramUserId} начал работу", user.TelegramUserId);
     }
 
-    private async Task HandleCatalogAsync(DomainUser user, long chatId, CancellationToken ct)
+    private async Task HandleCatalogAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
         user.CurrentStep = (int)UserStep.BrowsingCatalog;
-        await SaveUserAsync(user, ct);
+        await db.SaveChangesAsync(ct);
 
-        await SendCatalogPageAsync(user, chatId, page: 0, ct);
+        await SendCatalogPageAsync(db, user, chatId, page: 0, ct);
     }
 
     private async Task SendCatalogPageAsync(
+        AppDbContext db,
         DomainUser user,
         long chatId,
         int page,
         CancellationToken ct)
     {
         const int pageSize = 5;
-
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var totalCount = await db.Products.CountAsync(ct);
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
@@ -273,7 +275,7 @@ public class UpdateHandler
             .Replace("!", "\\!");
     }
 
-    private async Task HandleProfileAsync(DomainUser user, long chatId, CancellationToken ct)
+   private async Task HandleProfileAsync(DomainUser user, long chatId, CancellationToken ct)
     {
         var text = $"👤 Профиль\n\n" +
                    $"Имя: {user.FirstName} {user.LastName ?? ""}\n" +
@@ -296,11 +298,8 @@ public class UpdateHandler
             cancellationToken: ct);
     }
 
-    private async Task HandleMyOrdersAsync(DomainUser user, long chatId, CancellationToken ct)
+    private async Task HandleMyOrdersAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         var orders = await db.Orders
             .Where(o => o.UserId == user.Id)
             .OrderByDescending(o => o.CreatedAt)
@@ -331,11 +330,8 @@ public class UpdateHandler
             cancellationToken: ct);
     }
 
-    private async Task HandleCartAsync(DomainUser user, long chatId, CancellationToken ct)
+    private async Task HandleCartAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         var cartItems = await db.CartItems
             .Include(ci => ci.Product)
             .Where(ci => ci.UserId == user.Id)
@@ -377,6 +373,7 @@ public class UpdateHandler
     }
 
     private async Task HandleCallbackAsync(
+        AppDbContext db,
         DomainUser user,
         long chatId,
         string callbackData,
@@ -394,7 +391,7 @@ public class UpdateHandler
                 return;
             }
 
-            await HandleAddToCartAsync(user, chatId, productId, ct);
+            await HandleAddToCartAsync(db, user, chatId, productId, ct);
             return;
         }
 
@@ -410,15 +407,12 @@ public class UpdateHandler
                 return;
             }
 
-            await SendCatalogPageAsync(user, chatId, page, ct);
+            await SendCatalogPageAsync(db, user, chatId, page, ct);
             return;
         }
 
         if (callbackData == "checkout")
         {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
             var addresses = await db.UserAddresses
                 .Where(a => a.UserId == user.Id)
                 .OrderByDescending(a => a.CreatedAt)
@@ -427,7 +421,7 @@ public class UpdateHandler
             if (addresses.Count == 0)
             {
                 user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
-                await SaveUserAsync(user, ct);
+                await db.SaveChangesAsync(ct);
 
                 await _botClient.SendMessage(
                     chatId: chatId,
@@ -438,7 +432,7 @@ public class UpdateHandler
             else
             {
                 user.CurrentStep = (int)UserStep.SelectingDeliveryAddress;
-                await SaveUserAsync(user, ct);
+                await db.SaveChangesAsync(ct);
 
                 var buttons = addresses.Select(a =>
                     new[] { InlineKeyboardButton.WithCallbackData(a.AddressLine, $"select_address_{a.Id}") })
@@ -461,7 +455,7 @@ public class UpdateHandler
         if (callbackData == "add_new_address")
         {
             user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
-            await SaveUserAsync(user, ct);
+            await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
                 chatId: chatId,
@@ -483,9 +477,6 @@ public class UpdateHandler
                 return;
             }
 
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
             var address = await db.UserAddresses.FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == user.Id, ct);
             if (address == null)
             {
@@ -497,20 +488,18 @@ public class UpdateHandler
                 return;
             }
 
-            await CreateOrderAsync(user, chatId, address.AddressLine, ct);
+            await CreateOrderAsync(db, user, chatId, address.AddressLine, ct);
             return;
         }
     }
 
     private async Task HandleAddToCartAsync(
+        AppDbContext db,
         DomainUser user,
         long chatId,
         int productId,
         CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == productId, ct);
         if (product == null)
         {
@@ -585,6 +574,7 @@ public class UpdateHandler
     }
 
     private async Task HandleByCurrentStepAsync(
+        AppDbContext db,
         DomainUser user,
         long chatId,
         string text,
@@ -596,9 +586,6 @@ public class UpdateHandler
         {
             case UserStep.EnteringDeliveryAddress:
             {
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
                 // Сохраняем новый адрес
                 var newAddress = new UserAddress
                 {
@@ -609,8 +596,8 @@ public class UpdateHandler
                 };
                 db.UserAddresses.Add(newAddress);
                 await db.SaveChangesAsync(ct);
-
-                await CreateOrderAsync(user, chatId, text, ct);
+                
+                await CreateOrderAsync(db, user, chatId, text, ct);
                 break;
             }
 
@@ -625,14 +612,12 @@ public class UpdateHandler
     }
 
     private async Task CreateOrderAsync(
+        AppDbContext db,
         DomainUser user,
         long chatId,
         string address,
         CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         var cartItems = await db.CartItems
             .Include(ci => ci.Product)
             .Where(ci => ci.UserId == user.Id)
@@ -641,7 +626,7 @@ public class UpdateHandler
         if (cartItems.Count == 0)
         {
             user.CurrentStep = (int)UserStep.MainPage;
-            await SaveUserAsync(user, ct);
+            await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
                 chatId: chatId,
@@ -687,7 +672,7 @@ public class UpdateHandler
         user.CurrentStep = (int)UserStep.MainPage;
         user.DeliveryAddress = address;
         user.UpdatedAt = DateTime.UtcNow;
-        await SaveUserAsync(user, ct);
+        await db.SaveChangesAsync(ct);
 
         await _botClient.SendMessage(
             chatId: chatId,
@@ -700,15 +685,15 @@ public class UpdateHandler
     {
         try
         {
-            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://web:8080/orderhub";
+            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:8080/orderhub";
 
             await using var connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
                 .Build();
 
             await connection.StartAsync();
             await connection.InvokeAsync("SendNewOrderNotification");
-            await connection.StopAsync();
 
             _logger.LogInformation("🔔 Отправлено уведомление о новом заказе в админ-панель");
         }
@@ -718,14 +703,12 @@ public class UpdateHandler
         }
     }
 
-    private async Task<DomainUser> GetOrCreateUserAsync(
+    private async Task<DomainUser> GetOrCreateUser(
+        AppDbContext dbContext,
         long telegramUserId,
         global::Telegram.Bot.Types.User? telegramUser,
         CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.TelegramUserId == telegramUserId, ct);
 
@@ -750,26 +733,5 @@ public class UpdateHandler
         }
 
         return user;
-    }
-
-    private async Task SaveUserAsync(DomainUser user, CancellationToken ct)
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        var existing = await dbContext.Users.FindAsync(
-            new object[] { user.Id },
-            cancellationToken: ct);
-
-        if (existing != null)
-        {
-            existing.CurrentStep = user.CurrentStep;
-            existing.DeliveryAddress = user.DeliveryAddress;
-            existing.PhoneNumber = user.PhoneNumber;
-            existing.IsActive = user.IsActive;
-            existing.UpdatedAt = DateTime.UtcNow;
-
-            await dbContext.SaveChangesAsync(ct);
-        }
     }
 }
