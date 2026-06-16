@@ -37,41 +37,56 @@ public class UpdateHandler
     {
         try
         {
-            if (update.Message?.Text is { } text)
+            if (update.Message is { } message)
             {
-                var chatId = update.Message.Chat.Id;
-                var telegramUserId = update.Message.From?.Id ?? 0;
+                var chatId = message.Chat.Id;
+                var telegramUserId = message.From?.Id ?? 0;
 
                 var user = await GetOrCreateUserAsync(
                     telegramUserId,
-                    update.Message.From,
+                    message.From,
                     ct);
 
-                switch (text)
+                if (message.Text is { } text)
                 {
-                    case "/start":
-                        await HandleStartCommandAsync(user, chatId, ct);
-                        return;
+                    switch (text)
+                    {
+                        case "/start":
+                            await HandleStartCommandAsync(user, chatId, ct);
+                            return;
 
-                    case "🛍️ Каталог":
-                        await HandleCatalogAsync(user, chatId, ct);
-                        return;
+                        case "🛍️ Каталог":
+                            await HandleCatalogAsync(user, chatId, ct);
+                            return;
 
-                    case "🛒 Корзина":
-                        await HandleCartAsync(user, chatId, ct);
-                        return;
+                        case "🛒 Корзина":
+                            await HandleCartAsync(user, chatId, ct);
+                            return;
 
-                    case "👤 Профиль":
-                        await HandleProfileAsync(user, chatId, ct);
-                        return;
+                        case "📋 Мои заказы":
+                            await HandleMyOrdersAsync(user, chatId, ct);
+                            return;
 
-                    case "⚙️ Настройки":
-                        await HandleSettingsAsync(user, chatId, ct);
-                        return;
+                        case "👤 Профиль":
+                            await HandleProfileAsync(user, chatId, ct);
+                            return;
 
-                    default:
-                        await HandleByCurrentStepAsync(user, chatId, text, ct);
-                        return;
+                        case "⚙️ Настройки":
+                            await HandleSettingsAsync(user, chatId, ct);
+                            return;
+
+                        default:
+                            await HandleByCurrentStepAsync(user, chatId, text, ct);
+                            return;
+                    }
+                }
+                else
+                {
+                    await _botClient.SendMessage(
+                        chatId: chatId,
+                        text: "⚠️ Извините, бот пока поддерживает только текстовые сообщения.",
+                        cancellationToken: ct);
+                    return;
                 }
             }
 
@@ -120,7 +135,8 @@ public class UpdateHandler
         var keyboard = new ReplyKeyboardMarkup(new[]
         {
             new[] { new KeyboardButton("🛍️ Каталог"), new KeyboardButton("🛒 Корзина") },
-            new[] { new KeyboardButton("👤 Профиль"), new KeyboardButton("⚙️ Настройки") }
+            new[] { new KeyboardButton("📋 Мои заказы"), new KeyboardButton("👤 Профиль") },
+            new[] { new KeyboardButton("⚙️ Настройки") }
         })
         {
             ResizeKeyboard = true,
@@ -277,6 +293,41 @@ public class UpdateHandler
             chatId: chatId,
             text: "⚙️ Настройки\n\n(Заглушка)",
             linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+            cancellationToken: ct);
+    }
+
+    private async Task HandleMyOrdersAsync(DomainUser user, long chatId, CancellationToken ct)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var orders = await db.Orders
+            .Where(o => o.UserId == user.Id)
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(10)
+            .ToListAsync(ct);
+
+        if (orders.Count == 0)
+        {
+            await _botClient.SendMessage(
+                chatId: chatId,
+                text: "📋 У вас пока нет заказов.",
+                cancellationToken: ct);
+            return;
+        }
+
+        var lines = new List<string> { "📋 Ваши последние заказы:" };
+        foreach (var order in orders)
+        {
+            lines.Add($"📦 Заказ #{order.Id} от {order.CreatedAt:dd.MM.yyyy HH:mm}");
+            lines.Add($"Статус: {order.Status}");
+            lines.Add($"Сумма: {order.TotalPrice} руб.");
+            lines.Add("");
+        }
+
+        await _botClient.SendMessage(
+            chatId: chatId,
+            text: string.Join("\n", lines),
             cancellationToken: ct);
     }
 
