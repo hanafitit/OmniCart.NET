@@ -13,7 +13,11 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h4" Class="font-weight-bold mb-4">Заказы</MudText>
 
-    <MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" Elevation="1" Class="rounded-lg">
+    <MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" Elevation="1" Class="rounded-lg" Filter="new Func<Order,bool>(FilterFunc1)">
+    <ToolBarContent>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Поиск заказа..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Дата</MudTh>
@@ -51,6 +55,7 @@
 @code {
     private List<Order> _orders = new();
     private bool _loading = true;
+    private string _searchString = "";
     private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
@@ -121,6 +126,27 @@
         "Cancelled" => Color.Error,
         _ => Color.Default
     };
+
+    private bool FilterFunc1(Order order) => FilterFunc(order, _searchString);
+
+    private bool FilterFunc(Order order, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (order.Id.ToString().Contains(searchString))
+            return true;
+        if (order.User?.FirstName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        if (order.User?.LastName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        if (order.User?.TelegramUserId.ToString().Contains(searchString) ?? false)
+            return true;
+        if (order.DeliveryAddress?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        if (order.Status.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
 
     public async ValueTask DisposeAsync()
     {
