@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h4" Class="font-weight-bold mb-4">Заказы</MudText>
@@ -61,23 +62,51 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadOrders();
+    }
 
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On("NewOrderReceived", async () =>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            await InvokeAsync(async () =>
-            {
-                await LoadOrders();
-                StateHasChanged();
-                Snackbar.Add("Получен новый заказ!", Severity.Success);
-            });
-        });
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/orderhub"))
+                .WithAutomaticReconnect()
+                .Build();
 
-        await _hubConnection.StartAsync();
+            _hubConnection.On("NewOrderReceived", async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadOrders();
+                    StateHasChanged();
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("playNotificationSound");
+                    }
+                    catch { /* Игнорируем ошибки автоплея в браузере */ }
+                    Snackbar.Add("Получен новый заказ!", Severity.Success);
+                });
+            });
+
+            _hubConnection.Reconnected += async (connectionId) =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadOrders();
+                    StateHasChanged();
+                    Snackbar.Add("Связь восстановлена, данные обновлены", Severity.Info);
+                });
+            };
+
+            try
+            {
+                await _hubConnection.StartAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Ошибка подключения к уведомлениям: {ex.Message}", Severity.Error);
+            }
+        }
     }
 
     private async Task LoadOrders()
@@ -152,7 +181,13 @@
     {
         if (_hubConnection is not null)
         {
-            await _hubConnection.DisposeAsync();
+            try
+            {
+                await _hubConnection.StopAsync();
+                await _hubConnection.DisposeAsync();
+            }
+            catch { /* Игнорируем ошибки при закрытии */ }
+            finally { _hubConnection = null; }
         }
     }
 }
