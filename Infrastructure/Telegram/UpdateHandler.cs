@@ -686,16 +686,25 @@ public class UpdateHandler
         try
         {
             var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:8080/orderhub";
+            _logger.LogDebug("🔗 Попытка подключения к SignalR Hub: {HubUrl}", hubUrl);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await using var connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
                 .WithAutomaticReconnect()
                 .Build();
 
-            await connection.StartAsync();
-            await connection.InvokeAsync("SendNewOrderNotification");
+            await connection.StartAsync(cts.Token);
+            await connection.InvokeAsync("SendNewOrderNotification", cts.Token);
 
             _logger.LogInformation("🔔 Отправлено уведомление о новом заказе в админ-панель");
+
+            await connection.StopAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("⚠️ Тайм-аут при отправке уведомления в SignalR (админка может быть недоступна)");
         }
         catch (Exception ex)
         {
