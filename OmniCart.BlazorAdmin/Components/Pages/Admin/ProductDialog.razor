@@ -38,6 +38,12 @@
             return;
         }
 
+        if (Product.Price <= 0)
+        {
+            Snackbar.Add("Цена должна быть больше нуля", Severity.Error);
+            return;
+        }
+
         using var db = await DbFactory.CreateDbContextAsync();
 
         if (Product.Id == 0)

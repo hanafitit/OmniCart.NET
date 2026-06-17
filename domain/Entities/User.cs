@@ -51,5 +51,6 @@ public enum UserStep
     EnteringDeliveryAddress = 1,
     EnteringPayment = 2,
     BrowsingCatalog = 3,
-    SelectingDeliveryAddress = 4
+    SelectingDeliveryAddress = 4,
+    EnteringPhoneNumber = 5
 }

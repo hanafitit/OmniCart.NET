@@ -78,7 +78,12 @@ namespace OmniCart.Infrastructure
                     new Product { Id = 7, Name = "Apple Watch Series 9", Description = "Умные часы для здоровья и спорта", Price = 45000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 8, Name = "Logitech MX Master 3S", Description = "Лучшая мышь для продуктивности", Price = 12000m, Stock = 25, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 9, Name = "PlayStation 5 Slim", Description = "Игровая консоль нового поколения", Price = 55000m, Stock = 10, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new Product { Id = 10, Name = "Nintendo Switch OLED", Description = "Портативная игровая приставка", Price = 35000m, Stock = 12, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                    new Product { Id = 10, Name = "Nintendo Switch OLED", Description = "Портативная игровая приставка", Price = 35000m, Stock = 12, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 11, Name = "Steam Deck OLED", Description = "Мощная портативная игровая консоль с OLED-дисплеем", Price = 65000m, Stock = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 12, Name = "DJI Mini 4 Pro", Description = "Компактный дрон с профессиональной камерой", Price = 95000m, Stock = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 13, Name = "Keychron K2 V2", Description = "Механическая клавиатура с Bluetooth", Price = 9000m, Stock = 20, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 14, Name = "Marshall Emberton II", Description = "Портативная колонка с легендарным звуком", Price = 18000m, Stock = 10, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 15, Name = "Kindle Paperwhite 5", Description = "Электронная книга с 6.8-дюймовым экраном", Price = 16000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
                 );
             });
 

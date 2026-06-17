@@ -291,9 +291,20 @@ public class UpdateHandler
 
     private async Task HandleSettingsAsync(DomainUser user, long chatId, CancellationToken ct)
     {
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[] { InlineKeyboardButton.WithCallbackData("📱 Обновить номер телефона", "settings_update_phone") },
+            new[] { InlineKeyboardButton.WithCallbackData("📍 Мои адреса (Скоро)", "noop") }
+        });
+
+        var text = "⚙️ Настройки\n\n" +
+                   $"Текущий номер: {user.PhoneNumber ?? "не указан"}\n\n" +
+                   "Выберите действие:";
+
         await _botClient.SendMessage(
             chatId: chatId,
-            text: "⚙️ Настройки\n\n(Заглушка)",
+            text: text,
+            replyMarkup: keyboard,
             linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
             cancellationToken: ct);
     }
@@ -413,42 +424,20 @@ public class UpdateHandler
 
         if (callbackData == "checkout")
         {
-            var addresses = await db.UserAddresses
-                .Where(a => a.UserId == user.Id)
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync(ct);
-
-            if (addresses.Count == 0)
+            if (string.IsNullOrEmpty(user.PhoneNumber))
             {
-                user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
+                user.CurrentStep = (int)UserStep.EnteringPhoneNumber;
                 await db.SaveChangesAsync(ct);
 
                 await _botClient.SendMessage(
                     chatId: chatId,
-                    text: "📍 Введите адрес доставки:",
+                    text: "📱 Для оформления заказа, пожалуйста, введите ваш номер телефона в формате +7XXXXXXXXXX:",
                     linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
                     cancellationToken: ct);
+                return;
             }
-            else
-            {
-                user.CurrentStep = (int)UserStep.SelectingDeliveryAddress;
-                await db.SaveChangesAsync(ct);
 
-                var buttons = addresses.Select(a =>
-                    new[] { InlineKeyboardButton.WithCallbackData(a.AddressLine, $"select_address_{a.Id}") })
-                    .ToList();
-
-                buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("➕ Добавить новый адрес", "add_new_address") });
-
-                var keyboard = new InlineKeyboardMarkup(buttons);
-
-                await _botClient.SendMessage(
-                    chatId: chatId,
-                    text: "📍 Выберите адрес доставки или введите новый:",
-                    replyMarkup: keyboard,
-                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-                    cancellationToken: ct);
-            }
+            await StartCheckoutFlowAsync(db, user, chatId, ct);
             return;
         }
 
@@ -460,6 +449,19 @@ public class UpdateHandler
             await _botClient.SendMessage(
                 chatId: chatId,
                 text: "📍 Введите новый адрес доставки:",
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                cancellationToken: ct);
+            return;
+        }
+
+        if (callbackData == "settings_update_phone")
+        {
+            user.CurrentStep = (int)UserStep.EnteringPhoneNumber;
+            await db.SaveChangesAsync(ct);
+
+            await _botClient.SendMessage(
+                chatId: chatId,
+                text: "📱 Введите ваш новый номер телефона в формате +7XXXXXXXXXX:",
                 linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
                 cancellationToken: ct);
             return;
@@ -573,6 +575,46 @@ public class UpdateHandler
         }
     }
 
+    private async Task StartCheckoutFlowAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
+    {
+        var addresses = await db.UserAddresses
+            .Where(a => a.UserId == user.Id)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync(ct);
+
+        if (addresses.Count == 0)
+        {
+            user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
+            await db.SaveChangesAsync(ct);
+
+            await _botClient.SendMessage(
+                chatId: chatId,
+                text: "📍 Введите адрес доставки:",
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                cancellationToken: ct);
+        }
+        else
+        {
+            user.CurrentStep = (int)UserStep.SelectingDeliveryAddress;
+            await db.SaveChangesAsync(ct);
+
+            var buttons = addresses.Select(a =>
+                new[] { InlineKeyboardButton.WithCallbackData(a.AddressLine, $"select_address_{a.Id}") })
+                .ToList();
+
+            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("➕ Добавить новый адрес", "add_new_address") });
+
+            var keyboard = new InlineKeyboardMarkup(buttons);
+
+            await _botClient.SendMessage(
+                chatId: chatId,
+                text: "📍 Выберите адрес доставки или введите новый:",
+                replyMarkup: keyboard,
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                cancellationToken: ct);
+        }
+    }
+
     private async Task HandleByCurrentStepAsync(
         AppDbContext db,
         DomainUser user,
@@ -584,6 +626,30 @@ public class UpdateHandler
 
         switch (step)
         {
+            case UserStep.EnteringPhoneNumber:
+            {
+                if (string.IsNullOrWhiteSpace(text) || !text.StartsWith("+") || text.Length < 11)
+                {
+                    await _botClient.SendMessage(
+                        chatId: chatId,
+                        text: "⚠️ Пожалуйста, введите корректный номер телефона в формате +7XXXXXXXXXX:",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                user.PhoneNumber = text;
+                user.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: $"✅ Номер телефона {text} сохранен!",
+                    cancellationToken: ct);
+
+                await StartCheckoutFlowAsync(db, user, chatId, ct);
+                break;
+            }
+
             case UserStep.EnteringDeliveryAddress:
             {
                 // Сохраняем новый адрес
@@ -634,6 +700,21 @@ public class UpdateHandler
                 linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
                 cancellationToken: ct);
             return;
+        }
+
+        // Проверка наличия товара и списание остатков
+        foreach (var item in cartItems)
+        {
+            if (item.Product.Stock < item.Quantity)
+            {
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: $"⚠️ К сожалению, товар {EscapeMarkdown(item.Product.Name)} закончился или его недостаточно на складе (доступно: {item.Product.Stock} шт).",
+                    linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                    cancellationToken: ct);
+                return;
+            }
+            item.Product.Stock -= item.Quantity;
         }
 
         var total = cartItems.Sum(ci => ci.Product.Price * ci.Quantity);
