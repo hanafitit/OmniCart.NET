@@ -19,32 +19,46 @@
 - **Integration**: Google Sheets API v4
 - **DevOps**: Docker, Docker Compose
 
-## 🏗 Архитектура
+## 🏗 Архитектура (Clean Architecture)
 
-Проект разбит на логические слои:
-- **Domain**: Ядро системы, C# сущности (User, Product, Order).
-- **Infrastructure**: Реализация БД, сервисы Google Sheets, логика Telegram-бота.
-- **TelegramBot**: Воркер, обеспечивающий работу бота.
-- **OmniCart.BlazorAdmin**: Веб-интерфейс администратора.
+Проект следует принципам чистой архитектуры, что обеспечивает разделение ответственности и легкость тестирования:
+- **Domain**: Ядро системы. Содержит только бизнес-сущности (User, Product, Order) и перечисления (UserStep). Не имеет внешних зависимостей.
+- **Infrastructure**: Реализация доступа к данным (Entity Framework Core), внешние интеграции (Google Sheets API) и кросс-контекстные сервисы.
+- **TelegramBot**: Слой представления для покупателей. Реализован как фоновая служба (Background Service), обрабатывающая входящие сообщения через Telegram Bot API. Использует FSM для управления диалогом.
+- **OmniCart.BlazorAdmin**: Слой управления для администратора. Построен на Blazor Server и MudBlazor для обеспечения real-time взаимодействия. Использует SignalR для мгновенных уведомлений о заказах.
 
 ## 🚦 Быстрый запуск
 
 ### Предварительные условия
 1. Установлен Docker и Docker Compose.
 2. Получен токен для Telegram-бота у [@BotFather](https://t.me/BotFather).
+3. (Опционально) Настроены учетные данные Google Cloud для работы с таблицами.
 
-### Запуск через Docker
-1. Клонируйте репозиторий.
-2. Создайте переменные окружения или передайте их при запуске:
+### Пошаговая настройка через Docker
+1. **Клонируйте репозиторий:**
    ```bash
-   export POSTGRES_PASSWORD=your_secure_password
-   export TELEGRAM_BOT_TOKEN=your_bot_token
+   git clone https://github.com/your-repo/omnicart.git
+   cd omnicart
    ```
-3. Запустите проект:
+
+2. **Настройте переменные окружения:**
+   Создайте файл `.env` в корне проекта или экспортируйте переменные:
    ```bash
-   docker-compose up -d
+   POSTGRES_PASSWORD=your_secure_password
+   TELEGRAM_BOT_TOKEN=your_bot_token
    ```
-4. Админка будет доступна по адресу: `http://localhost:8080`
+
+3. **Запустите всю систему одной командой:**
+   ```bash
+   docker-compose up --build -d
+   ```
+
+4. **Доступ к интерфейсам:**
+   - **Админ-панель:** [http://localhost:8080](http://localhost:8080)
+   - **Telegram Бот:** Найдите вашего бота в Telegram и отправьте `/start`.
+
+5. **Инициализация базы данных:**
+   При первом запуске Docker автоматически поднимет PostgreSQL, а сервисы применят миграции (если настроен автоматический запуск миграций в `Program.cs`) или вы можете применить их вручную.
 
 ## ⚙️ Настройка Google Sheets
 Для работы интеграции необходимо:

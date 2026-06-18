@@ -83,7 +83,9 @@ namespace OmniCart.Infrastructure
                     new Product { Id = 12, Name = "DJI Mini 4 Pro", Description = "Компактный дрон с профессиональной камерой", Price = 95000m, Stock = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 13, Name = "Keychron K2 V2", Description = "Механическая клавиатура с Bluetooth", Price = 9000m, Stock = 20, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new Product { Id = 14, Name = "Marshall Emberton II", Description = "Портативная колонка с легендарным звуком", Price = 18000m, Stock = 10, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new Product { Id = 15, Name = "Kindle Paperwhite 5", Description = "Электронная книга с 6.8-дюймовым экраном", Price = 16000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                    new Product { Id = 15, Name = "Kindle Paperwhite 5", Description = "Электронная книга с 6.8-дюймовым экраном", Price = 16000m, Stock = 15, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 16, Name = "Dyson V15 Detect", Description = "Мощный беспроводной пылесос с лазерной подсветкой", Price = 75000m, Stock = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Product { Id = 17, Name = "Xbox Series X", Description = "Самая мощная консоль Xbox в истории", Price = 55000m, Stock = 8, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
                 );
             });
 
