@@ -20,7 +20,7 @@ builder.Services.AddSignalR();
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+    ?? throw new InvalidOperationException("Строка подключения 'DefaultConnection' не найдена в конфигурации. Пожалуйста, убедитесь, что 'ConnectionStrings:DefaultConnection' установлена в appsettings.json или через переменные окружения.");
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
 {
