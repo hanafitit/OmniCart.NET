@@ -1,4 +1,5 @@
 @page "/"
+@using OmniCart.Domain.Entities
 @using OmniCart.Infrastructure
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.SignalR.Client
@@ -62,6 +63,31 @@
             </MudList>
         </MudPaper>
     </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-4 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Последние заказы</MudText>
+            <MudTable Items="@_latestOrders" Hover="true" Elevation="0" Dense="true">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Дата</MudTh>
+                    <MudTh>Клиент</MudTh>
+                    <MudTh>Сумма</MudTh>
+                    <MudTh>Статус</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                    <MudTd DataLabel="Дата">@context.CreatedAt.ToString("g")</MudTd>
+                    <MudTd DataLabel="Клиент">@context.User?.FirstName @context.User?.LastName</MudTd>
+                    <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
+                    <MudTd DataLabel="Статус">@context.Status</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <div class="d-flex justify-end mt-2">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/orders"))">Все заказы</MudButton>
+            </div>
+        </MudPaper>
+    </MudItem>
 </MudGrid>
 
 @code {
@@ -74,6 +100,7 @@
     private List<ChartSeries<double>> _series = new();
     private string[] _xAxisLabels = Array.Empty<string>();
     private List<PopularProductDto> _popularProducts = new();
+    private List<Order> _latestOrders = new();
 
     private class PopularProductDto
     {
@@ -140,6 +167,12 @@
             .GroupBy(oi => oi.Product.Name)
             .Select(g => new PopularProductDto { Name = g.Key, Count = g.Sum(oi => oi.Quantity) })
             .OrderByDescending(x => x.Count)
+            .Take(5)
+            .ToListAsync();
+
+        _latestOrders = await db.Orders
+            .Include(o => o.User)
+            .OrderByDescending(o => o.CreatedAt)
             .Take(5)
             .ToListAsync();
     }

@@ -1,0 +1,76 @@
+@using OmniCart.Domain.Entities
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Детали заказа #@OrderId</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_orderItems == null || !_orderItems.Any())
+        {
+            <MudText>Товары в заказе не найдены.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_orderItems" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Товар</MudTh>
+                    <MudTh>Цена</MudTh>
+                    <MudTh>Кол-во</MudTh>
+                    <MudTh>Сумма</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Товар">@context.Product?.Name</MudTd>
+                    <MudTd DataLabel="Цена">@context.Price руб.</MudTd>
+                    <MudTd DataLabel="Кол-во">@context.Quantity шт.</MudTd>
+                    <MudTd DataLabel="Сумма">@(context.Price * context.Quantity) руб.</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTFootRow>
+                        <MudTd colspan="3" Style="text-align: right"><b>Итого:</b></MudTd>
+                        <MudTd><b>@_totalPrice руб.</b></MudTd>
+                    </MudTFootRow>
+                </FooterContent>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">Закрыть</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int OrderId { get; set; }
+
+    private List<OrderItem> _orderItems = new();
+    private bool _loading = true;
+    private decimal _totalPrice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrderItems();
+    }
+
+    private async Task LoadOrderItems()
+    {
+        _loading = true;
+        using var db = await DbFactory.CreateDbContextAsync();
+        _orderItems = await db.OrderItems
+            .Include(oi => oi.Product)
+            .Where(oi => oi.OrderId == OrderId)
+            .ToListAsync();
+
+        _totalPrice = _orderItems.Sum(oi => oi.Price * oi.Quantity);
+        _loading = false;
+    }
+
+    private void Close() => MudDialog.Close();
+}

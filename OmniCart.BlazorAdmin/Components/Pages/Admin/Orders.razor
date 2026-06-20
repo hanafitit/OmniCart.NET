@@ -39,6 +39,7 @@
         </MudTd>
         <MudTd DataLabel="Действия">
             <div class="d-flex align-center">
+                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" OnClick="@(() => ShowOrderDetails(context))" Size="Size.Small" Class="mr-2" />
                 <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense" Class="mr-2" Style="width: 150px;">
                     <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
                     <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
@@ -131,6 +132,16 @@
             order.Status = newStatus;
             Snackbar.Add($"Статус заказа #{order.Id} изменен на {newStatus}", Severity.Info);
         }
+    }
+
+    private async Task ShowOrderDetails(Order order)
+    {
+        var parameters = new DialogParameters<OrderDetailsDialog>
+        {
+            { x => x.OrderId, order.Id }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<OrderDetailsDialog>($"Заказ #{order.Id}", parameters, options);
     }
 
     private async Task DeleteOrder(Order order)
