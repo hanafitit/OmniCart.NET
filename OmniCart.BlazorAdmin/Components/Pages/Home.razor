@@ -9,33 +9,43 @@
 <MudText Typo="Typo.h4" Class="font-weight-bold mb-6">Дашборд</MudText>
 
 <MudGrid>
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
         <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
                 <MudText Typo="Typo.subtitle2" Class="text-secondary">Выручка</MudText>
-                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_totalRevenue.ToString("N0") руб.</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold mt-1">@_totalRevenue.ToString("N0") руб.</MudText>
             </div>
             <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Color="Color.Primary" />
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
         <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
-                <MudText Typo="Typo.subtitle2" Class="text-secondary">Заказов сегодня</MudText>
-                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_ordersToday</MudText>
+                <MudText Typo="Typo.subtitle2" Class="text-secondary">Заказов</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold mt-1">@_totalOrders</MudText>
             </div>
             <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Secondary" />
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
         <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
                 <MudText Typo="Typo.subtitle2" Class="text-secondary">Всего клиентов</MudText>
-                <MudText Typo="Typo.h4" Class="font-weight-bold mt-1">@_totalUsers</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold mt-1">@_totalUsers</MudText>
             </div>
             <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Info" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="3">
+        <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="text-secondary">Активных</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold mt-1">@_activeUsers</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" Color="Color.Success" />
         </MudPaper>
     </MudItem>
 
@@ -66,8 +76,9 @@
 
 @code {
     private decimal _totalRevenue;
-    private int _ordersToday;
+    private int _totalOrders;
     private int _totalUsers;
+    private int _activeUsers;
     private int _index = -1;
     private HubConnection? _hubConnection;
 
@@ -107,11 +118,11 @@
         using var db = await DbFactory.CreateDbContextAsync();
 
         _totalRevenue = await db.Orders.SumAsync(o => o.TotalPrice);
+        _totalOrders = await db.Orders.CountAsync();
+        _totalUsers = await db.Users.CountAsync();
+        _activeUsers = await db.Users.CountAsync(u => u.IsActive);
 
         var todayUtc = DateTime.UtcNow.Date;
-        _ordersToday = await db.Orders.CountAsync(o => o.CreatedAt >= todayUtc);
-
-        _totalUsers = await db.Users.CountAsync();
 
         // Подготовка данных для графика (одним запросом)
         var sevenDaysAgo = todayUtc.AddDays(-6);
