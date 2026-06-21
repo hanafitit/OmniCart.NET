@@ -764,32 +764,39 @@ public class UpdateHandler
 
     private async Task NotifyAdminAboutNewOrderAsync()
     {
+        var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:8080/orderhub";
+        _logger.LogInformation("🔗 Попытка отправить уведомление в SignalR Hub: {HubUrl}", hubUrl);
+
         try
         {
-            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:8080/orderhub";
-            _logger.LogDebug("🔗 Попытка подключения к SignalR Hub: {HubUrl}", hubUrl);
-
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
             await using var connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
                 .WithAutomaticReconnect()
                 .Build();
 
-            await connection.StartAsync(cts.Token);
-            await connection.InvokeAsync("SendNewOrderNotification", cts.Token);
+            connection.Closed += (error) =>
+            {
+                _logger.LogWarning("📡 SignalR соединение закрыто: {Error}", error?.Message);
+                return Task.CompletedTask;
+            };
 
-            _logger.LogInformation("🔔 Отправлено уведомление о новом заказе в админ-панель");
+            await connection.StartAsync(cts.Token);
+            _logger.LogDebug("🔌 Соединение с SignalR установлено. Отправка уведомления...");
+
+            await connection.InvokeAsync("SendNewOrderNotification", cts.Token);
+            _logger.LogInformation("🔔 Уведомление о новом заказе успешно отправлено в админ-панель");
 
             await connection.StopAsync(cts.Token);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("⚠️ Тайм-аут при отправке уведомления в SignalR (админка может быть недоступна)");
+            _logger.LogWarning("⚠️ Тайм-аут при отправке уведомления в SignalR. Проверьте доступность: {HubUrl}", hubUrl);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Ошибка при отправке уведомления через SignalR: {Message}", ex.Message);
+            _logger.LogError(ex, "❌ Ошибка SignalR при отправке из бота: {Message}. URL: {HubUrl}", ex.Message, hubUrl);
         }
     }
 
