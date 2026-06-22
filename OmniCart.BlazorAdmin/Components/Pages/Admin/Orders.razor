@@ -39,6 +39,7 @@
         </MudTd>
         <MudTd DataLabel="Действия">
             <div class="d-flex align-center">
+                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" OnClick="@(() => ViewOrderDetails(context))" Size="Size.Small" Class="mr-1" />
                 <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense" Class="mr-2" Style="width: 150px;">
                     <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
                     <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
@@ -119,6 +120,17 @@
                 Snackbar.Add($"Ошибка подключения к уведомлениям: {ex.Message}", Severity.Error);
             }
         }
+    }
+
+    private async Task ViewOrderDetails(Order order)
+    {
+        var parameters = new DialogParameters<OrderDetailsDialog>
+        {
+            { x => x.Order, order }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        await DialogService.ShowAsync<OrderDetailsDialog>("Детали заказа", parameters, options);
     }
 
     private async Task LoadOrders()

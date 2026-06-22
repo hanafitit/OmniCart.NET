@@ -1,0 +1,73 @@
+@using OmniCart.Domain.Entities
+@using OmniCart.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Детали заказа #@Order.Id</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_orderItems.Count == 0)
+        {
+            <MudText>Товары в заказе не найдены.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_orderItems" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" Dense="true">
+                <HeaderContent>
+                    <MudTh>Товар</MudTh>
+                    <MudTh>Кол-во</MudTh>
+                    <MudTh>Цена</MudTh>
+                    <MudTh>Сумма</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Товар">@context.Product?.Name</MudTd>
+                    <MudTd DataLabel="Кол-во">@context.Quantity</MudTd>
+                    <MudTd DataLabel="Цена">@context.Price руб.</MudTd>
+                    <MudTd DataLabel="Сумма">@(context.Price * context.Quantity) руб.</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTFootRow>
+                        <MudTd colspan="3" Style="text-align: right; font-weight: bold;">Итого:</MudTd>
+                        <MudTd Style="font-weight: bold;">@Order.TotalPrice руб.</MudTd>
+                    </MudTFootRow>
+                </FooterContent>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">Закрыть</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Order Order { get; set; } = default!;
+
+    private List<OrderItem> _orderItems = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrderItems();
+    }
+
+    private async Task LoadOrderItems()
+    {
+        _loading = true;
+        using var db = await DbFactory.CreateDbContextAsync();
+        _orderItems = await db.OrderItems
+            .Include(oi => oi.Product)
+            .Where(oi => oi.OrderId == Order.Id)
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private void Close() => MudDialog.Close();
+}
