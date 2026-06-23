@@ -131,7 +131,7 @@ public class UpdateHandler
 
     private async Task HandleStartCommandAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
-        user.CurrentStep = (int)UserStep.MainPage;
+        user.CurrentStep = UserStep.MainPage;
         user.UpdatedAt = DateTime.UtcNow;
         user.IsActive = true;
         await db.SaveChangesAsync(ct);
@@ -164,7 +164,7 @@ public class UpdateHandler
 
     private async Task HandleCatalogAsync(AppDbContext db, DomainUser user, long chatId, CancellationToken ct)
     {
-        user.CurrentStep = (int)UserStep.BrowsingCatalog;
+        user.CurrentStep = UserStep.BrowsingCatalog;
         await db.SaveChangesAsync(ct);
 
         await SendCatalogPageAsync(db, user, chatId, page: 0, ct);
@@ -426,7 +426,7 @@ public class UpdateHandler
         {
             if (string.IsNullOrEmpty(user.PhoneNumber))
             {
-                user.CurrentStep = (int)UserStep.EnteringPhoneNumber;
+                user.CurrentStep = UserStep.EnteringPhoneNumber;
                 await db.SaveChangesAsync(ct);
 
                 await _botClient.SendMessage(
@@ -443,7 +443,7 @@ public class UpdateHandler
 
         if (callbackData == "add_new_address")
         {
-            user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
+            user.CurrentStep = UserStep.EnteringDeliveryAddress;
             await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
@@ -456,7 +456,7 @@ public class UpdateHandler
 
         if (callbackData == "settings_update_phone")
         {
-            user.CurrentStep = (int)UserStep.EnteringPhoneNumber;
+            user.CurrentStep = UserStep.EnteringPhoneNumber;
             await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
@@ -584,7 +584,7 @@ public class UpdateHandler
 
         if (addresses.Count == 0)
         {
-            user.CurrentStep = (int)UserStep.EnteringDeliveryAddress;
+            user.CurrentStep = UserStep.EnteringDeliveryAddress;
             await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
@@ -595,7 +595,7 @@ public class UpdateHandler
         }
         else
         {
-            user.CurrentStep = (int)UserStep.SelectingDeliveryAddress;
+            user.CurrentStep = UserStep.SelectingDeliveryAddress;
             await db.SaveChangesAsync(ct);
 
             var buttons = addresses.Select(a =>
@@ -622,7 +622,7 @@ public class UpdateHandler
         string text,
         CancellationToken ct)
     {
-        var step = (UserStep)user.CurrentStep;
+        var step = user.CurrentStep;
 
         switch (step)
         {
@@ -691,7 +691,7 @@ public class UpdateHandler
 
         if (cartItems.Count == 0)
         {
-            user.CurrentStep = (int)UserStep.MainPage;
+            user.CurrentStep = UserStep.MainPage;
             await db.SaveChangesAsync(ct);
 
             await _botClient.SendMessage(
@@ -750,7 +750,7 @@ public class UpdateHandler
         // Уведомление через SignalR
         await NotifyAdminAboutNewOrderAsync();
 
-        user.CurrentStep = (int)UserStep.MainPage;
+        user.CurrentStep = UserStep.MainPage;
         user.DeliveryAddress = address;
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -817,7 +817,7 @@ public class UpdateHandler
                 Username = telegramUser?.Username ?? "unknown",
                 FirstName = telegramUser?.FirstName ?? "User",
                 LastName = telegramUser?.LastName,
-                CurrentStep = (int)UserStep.MainPage,
+                CurrentStep = UserStep.MainPage,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 IsActive = true

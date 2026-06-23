@@ -21,7 +21,7 @@ public class User
     public string? LastName { get; set; }
 
     /// <summary>Текущий шаг FSM</summary>
-    public int CurrentStep { get; set; } = (int)UserStep.MainPage;
+    public UserStep CurrentStep { get; set; } = UserStep.MainPage;
 
     /// <summary>Адрес доставки</summary>
     public string? DeliveryAddress { get; set; }
@@ -40,17 +40,4 @@ public class User
 
     /// <summary>Список сохраненных адресов</summary>
     public ICollection<UserAddress> Addresses { get; set; } = [];
-}
-
-/// <summary>
-/// FSM состояния пользователя
-/// </summary>
-public enum UserStep
-{
-    MainPage = 0,
-    EnteringDeliveryAddress = 1,
-    EnteringPayment = 2,
-    BrowsingCatalog = 3,
-    SelectingDeliveryAddress = 4,
-    EnteringPhoneNumber = 5
 }
