@@ -11,12 +11,15 @@ using DomainUser = OmniCart.Domain.Entities.User;
 
 namespace OmniCart.Infrastructure.Telegram;
 
-public class UpdateHandler
+public class UpdateHandler : IAsyncDisposable
 {
     private readonly ITelegramBotClient _botClient;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UpdateHandler> _logger;
     private readonly IConfiguration _configuration;
+
+    private HubConnection? _hubConnection;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
 
     public UpdateHandler(
         ITelegramBotClient botClient,
@@ -756,42 +759,101 @@ public class UpdateHandler
             cancellationToken: ct);
     }
 
-    private async Task NotifyAdminAboutNewOrderAsync()
+    private async Task<HubConnection?> EnsureSignalRConnectedAsync(CancellationToken ct)
     {
-        var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:8080/orderhub";
-        _logger.LogInformation("🔗 Попытка отправить уведомление в SignalR Hub: {HubUrl}", hubUrl);
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            return _hubConnection;
+        }
 
+        await _connectionLock.WaitAsync(ct);
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-
-            await using var connection = new HubConnectionBuilder()
-                .WithUrl(hubUrl)
-                .WithAutomaticReconnect()
-                .Build();
-
-            connection.Closed += (error) =>
+            if (_hubConnection?.State == HubConnectionState.Connected)
             {
-                _logger.LogWarning("📡 SignalR соединение закрыто: {Error}", error?.Message);
-                return Task.CompletedTask;
-            };
+                return _hubConnection;
+            }
 
-            await connection.StartAsync(cts.Token);
-            _logger.LogDebug("🔌 Соединение с SignalR установлено. Отправка уведомления...");
+            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:5216/orderhub";
 
-            await connection.InvokeAsync("SendNewOrderNotification", cts.Token);
-            _logger.LogInformation("🔔 Уведомление о новом заказе успешно отправлено в админ-панель");
+            if (_hubConnection == null)
+            {
+                _hubConnection = new HubConnectionBuilder()
+                    .WithUrl(hubUrl)
+                    .WithAutomaticReconnect()
+                    .Build();
 
-            await connection.StopAsync(cts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("⚠️ Тайм-аут при отправке уведомления в SignalR. Проверьте доступность: {HubUrl}", hubUrl);
+                _hubConnection.Closed += (error) =>
+                {
+                    _logger.LogWarning("📡 SignalR соединение закрыто: {Error}", error?.Message);
+                    return Task.CompletedTask;
+                };
+
+                _hubConnection.Reconnecting += (error) =>
+                {
+                    _logger.LogInformation("🔄 SignalR переподключение: {Error}", error?.Message);
+                    return Task.CompletedTask;
+                };
+
+                _hubConnection.Reconnected += (connectionId) =>
+                {
+                    _logger.LogInformation("🔌 SignalR переподключено: {ConnectionId}", connectionId);
+                    return Task.CompletedTask;
+                };
+            }
+
+            if (_hubConnection.State == HubConnectionState.Disconnected)
+            {
+                _logger.LogInformation("🔗 Попытка подключения к SignalR Hub: {HubUrl}", hubUrl);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                await _hubConnection.StartAsync(cts.Token);
+                _logger.LogInformation("✅ Соединение с SignalR установлено");
+            }
+
+            return _hubConnection;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Ошибка SignalR при отправке из бота: {Message}. URL: {HubUrl}", ex.Message, hubUrl);
+            _logger.LogWarning("⚠️ Не удалось подключиться к SignalR: {Message}", ex.Message);
+            return null;
         }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    private async Task NotifyAdminAboutNewOrderAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var connection = await EnsureSignalRConnectedAsync(cts.Token);
+
+            if (connection != null && connection.State == HubConnectionState.Connected)
+            {
+                await connection.InvokeAsync("SendNewOrderNotification", cts.Token);
+                _logger.LogInformation("🔔 Уведомление о новом заказе успешно отправлено в админ-панель");
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ Уведомление не отправлено: SignalR не подключен");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Ошибка при отправке уведомления SignalR: {Message}", ex.Message);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+        _connectionLock.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private async Task<DomainUser> GetOrCreateUser(

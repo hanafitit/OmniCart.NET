@@ -6,10 +6,11 @@ using OmniCart.BlazorAdmin.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddJsonFile(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "TelegramBot", "appsettings.json"),
-    optional: true,
-    reloadOnChange: true);
+var sharedSettingsPath = Path.Combine(builder.Environment.ContentRootPath, "..", "TelegramBot", "appsettings.json");
+if (File.Exists(sharedSettingsPath))
+{
+    builder.Configuration.AddJsonFile(sharedSettingsPath, optional: true, reloadOnChange: true);
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
