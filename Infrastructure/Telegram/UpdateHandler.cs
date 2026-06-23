@@ -16,20 +16,17 @@ public class UpdateHandler
     private readonly ITelegramBotClient _botClient;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UpdateHandler> _logger;
-    private readonly GoogleSheetsService _googleSheetsService;
     private readonly IConfiguration _configuration;
 
     public UpdateHandler(
         ITelegramBotClient botClient,
         IServiceProvider serviceProvider,
         ILogger<UpdateHandler> logger,
-        GoogleSheetsService googleSheetsService,
         IConfiguration configuration)
     {
         _botClient = botClient;
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _googleSheetsService = googleSheetsService;
         _configuration = configuration;
     }
 
@@ -743,9 +740,6 @@ public class UpdateHandler
         db.Orders.Add(order);
         db.CartItems.RemoveRange(cartItems);
         await db.SaveChangesAsync(ct);
-
-        // Логирование в Google Sheets
-        await _googleSheetsService.AddOrderAsync(order, user, orderItems);
 
         // Уведомление через SignalR
         await NotifyAdminAboutNewOrderAsync();
