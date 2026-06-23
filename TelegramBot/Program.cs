@@ -23,11 +23,6 @@ var builder = Host.CreateDefaultBuilder(args)
             options.UseNpgsql(connectionString);
         });
 
-        // Конфигурация и сервис Google Sheets
-        services.Configure<GoogleSheetsSettings>(
-            context.Configuration.GetSection("GoogleSheetsSettings"));
-        services.AddSingleton<GoogleSheetsService>(); // Регистрируем GoogleSheetsService
-
             // Telegram Bot
             services.Configure<TelegramBotSettings>(
             context.Configuration.GetSection("TelegramBotSettings"));
