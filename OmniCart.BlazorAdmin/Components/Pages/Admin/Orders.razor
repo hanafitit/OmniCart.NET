@@ -26,7 +26,6 @@
         <MudTh>Адрес</MudTh>
         <MudTh>Сумма</MudTh>
         <MudTh>Статус</MudTh>
-        <MudTh>Действия</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="ID">@context.Id</MudTd>
@@ -35,20 +34,26 @@
         <MudTd DataLabel="Адрес">@context.DeliveryAddress</MudTd>
         <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
         <MudTd DataLabel="Статус">
-            <MudChip T="string" Color="@GetStatusColor(context.Status)">@context.Status</MudChip>
-        </MudTd>
-        <MudTd DataLabel="Действия">
-            <div class="d-flex align-center">
-                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" OnClick="@(() => ViewOrderDetails(context))" Size="Size.Small" Class="mr-1" />
-                <MudSelect T="string" Value="@context.Status" ValueChanged="@((s) => UpdateStatus(context, s))" Dense="true" Margin="Margin.Dense" Class="mr-2" Style="width: 150px;">
-                    <MudSelectItem Value="@("Created")">Новый</MudSelectItem>
-                    <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
-                    <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
-                    <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
-                    <MudSelectItem Value="@("Cancelled")">Отменен</MudSelectItem>
-                </MudSelect>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteOrder(context))" Size="Size.Small" />
-            </div>
+            @{ var currentOrder = context; }
+            <MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+                <ActivatorContent Context="menuActivator">
+                    <MudChip T="string" Color="@GetStatusColor(currentOrder.Status)" Variant="Variant.Filled">
+                        @GetStatusText(currentOrder.Status)
+                    </MudChip>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Created"))">Новый</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Processing"))">В обработке</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Shipped"))">Отправлен</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Delivered"))">Доставлен</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Cancelled"))">Отменен</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => ViewOrderDetails(currentOrder))">Детали заказа</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteOrder(currentOrder))">
+                        <MudText Color="Color.Error">Удалить заказ</MudText>
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
         </MudTd>
     </RowTemplate>
 </MudTable>
@@ -178,6 +183,16 @@
         "Delivered" => Color.Success,
         "Cancelled" => Color.Error,
         _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "Created" => "Новый",
+        "Processing" => "В обработке",
+        "Shipped" => "Отправлен",
+        "Delivered" => "Доставлен",
+        "Cancelled" => "Отменен",
+        _ => status
     };
 
     private bool FilterFunc1(Order order) => FilterFunc(order, _searchString);
