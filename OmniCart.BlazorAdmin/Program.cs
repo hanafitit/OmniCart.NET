@@ -13,11 +13,21 @@ if (File.Exists(sharedSettingsPath))
 }
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
 builder.Services.AddMudServices();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.MaximumReceiveMessageSize = 1024 * 128; // 128 KB
+});
+
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(10);
+    }).AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 1024 * 128;
+    });
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
