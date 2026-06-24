@@ -781,6 +781,10 @@ public class UpdateHandler : IAsyncDisposable
                 _hubConnection = new HubConnectionBuilder()
                     .WithUrl(hubUrl)
                     .WithAutomaticReconnect()
+                    .ConfigureLogging(logging =>
+                    {
+                        logging.SetMinimumLevel(LogLevel.Trace);
+                    })
                     .Build();
 
                 _hubConnection.Closed += (error) =>
