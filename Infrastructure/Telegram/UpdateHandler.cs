@@ -774,7 +774,7 @@ public class UpdateHandler : IAsyncDisposable
                 return _hubConnection;
             }
 
-            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://localhost:5216/orderhub";
+            var hubUrl = _configuration["SignalR:HubUrl"] ?? "http://127.0.0.1:5216/orderhub";
 
             if (_hubConnection == null)
             {
