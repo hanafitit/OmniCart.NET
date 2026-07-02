@@ -15,7 +15,7 @@
         </MudButton>
     </div>
 
-    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="1" Class="rounded-lg" Filter="new Func<Product,bool>(FilterFunc1)">
+    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="0" Class="rounded-lg mobile-cards-table" Filter="new Func<Product,bool>(FilterFunc1)">
     <ToolBarContent>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString" Placeholder="Поиск товара..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
@@ -28,14 +28,14 @@
         <MudTh>Действия</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="ID">@context.Id</MudTd>
-        <MudTd DataLabel="Название">@context.Name</MudTd>
-        <MudTd DataLabel="Цена">@context.Price руб.</MudTd>
+        <MudTd DataLabel="ID"><b>#@context.Id</b></MudTd>
+        <MudTd DataLabel="Название" Class="font-weight-bold">@context.Name</MudTd>
+        <MudTd DataLabel="Цена"><span class="mud-primary-text font-weight-bold">@context.Price.ToString("N0") руб.</span></MudTd>
         <MudTd DataLabel="Остаток">@context.Stock шт.</MudTd>
         <MudTd DataLabel="Действия">
             @{ var currentProduct = context; }
             <div class="d-sm-none">
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditProduct(currentProduct))">Редактировать</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteProduct(currentProduct))">Удалить</MudMenuItem>
                 </MudMenu>
@@ -48,6 +48,52 @@
     </RowTemplate>
 </MudTable>
 </MudContainer>
+
+<style>
+    @@media (max-width: 600px) {
+        .mobile-cards-table .mud-table-container {
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .mobile-cards-table .mud-table-row {
+            display: block;
+            margin-bottom: 20px !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            background: white !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            padding: 12px !important;
+            overflow: hidden;
+        }
+
+        .mobile-cards-table .mud-table-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none !important;
+            padding: 8px 12px !important;
+            text-align: right !important;
+        }
+
+        .mobile-cards-table .mud-table-cell::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-align: left;
+            margin-right: 16px;
+        }
+
+        .mobile-cards-table .mud-table-cell:last-child {
+            border-top: 1px solid #f1f5f9 !important;
+            margin-top: 8px;
+            padding-top: 12px !important;
+        }
+    }
+</style>
 
 @code {
     private List<Product> _products = new();
