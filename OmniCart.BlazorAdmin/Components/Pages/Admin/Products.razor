@@ -6,7 +6,6 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h4" Class="font-weight-bold">Товары</MudText>
@@ -14,8 +13,7 @@
             Добавить товар
         </MudButton>
     </div>
-
-    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" Elevation="0" Class="rounded-lg mobile-cards-table" Filter="new Func<Product,bool>(FilterFunc1)">
+    <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Md" Loading="@_loading" Elevation="0" Class="rounded-lg mobile-cards-table" Filter="new Func<Product,bool>(FilterFunc1)">
     <ToolBarContent>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString" Placeholder="Поиск товара..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
@@ -34,13 +32,13 @@
         <MudTd DataLabel="Остаток">@context.Stock шт.</MudTd>
         <MudTd DataLabel="Действия">
             @{ var currentProduct = context; }
-            <div class="d-sm-none">
+            <div class="d-md-none">
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditProduct(currentProduct))">Редактировать</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteProduct(currentProduct))">Удалить</MudMenuItem>
                 </MudMenu>
             </div>
-            <div class="d-none d-sm-block">
+            <div class="d-none d-md-block">
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => EditProduct(currentProduct))" Size="Size.Small" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteProduct(currentProduct))" Size="Size.Small" />
             </div>
@@ -48,45 +46,40 @@
     </RowTemplate>
 </MudTable>
 </MudContainer>
-
 <style>
-    @@media (max-width: 600px) {
+    /* Адаптация под карточки для Breakpoint.Md (960px) */
+    @@media (max-width: 959.95px) {
         .mobile-cards-table .mud-table-container {
             background-color: transparent !important;
             box-shadow: none !important;
         }
-
         .mobile-cards-table .mud-table-row {
             display: block;
-            margin-bottom: 20px !important;
+            margin-bottom: 16px !important;
             border: 1px solid #e2e8f0 !important;
             border-radius: 12px !important;
             background: white !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-            padding: 12px !important;
-            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+            padding: 8px !important;
         }
-
         .mobile-cards-table .mud-table-cell {
             display: flex;
             justify-content: space-between;
             align-items: center;
             border: none !important;
-            padding: 8px 12px !important;
+            padding: 6px 12px !important;
             text-align: right !important;
         }
-
         .mobile-cards-table .mud-table-cell::before {
             content: attr(data-label);
-            font-weight: 600;
-            color: #64748b;
+            font-weight: 700;
+            color: #475569;
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             letter-spacing: 0.05em;
             text-align: left;
-            margin-right: 16px;
+            margin-right: 12px;
         }
-
         .mobile-cards-table .mud-table-cell:last-child {
             border-top: 1px solid #f1f5f9 !important;
             margin-top: 8px;
@@ -94,17 +87,14 @@
         }
     }
 </style>
-
 @code {
     private List<Product> _products = new();
     private bool _loading = true;
     private string _searchString = "";
-
     protected override async Task OnInitializedAsync()
     {
         await LoadProducts();
     }
-
     private async Task LoadProducts()
     {
         _loading = true;
@@ -130,7 +120,6 @@
             _loading = false;
         }
     }
-
     private async Task AddProduct()
     {
         var parameters = new DialogParameters<ProductDialog>
@@ -138,16 +127,13 @@
             { x => x.Product, new Product { Name = "", Description = "" } }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-
         var dialog = await DialogService.ShowAsync<ProductDialog>("Добавить товар", parameters, options);
         var result = await dialog.Result;
-
         if (result is { Canceled: false })
         {
             await LoadProducts();
         }
     }
-
     private async Task EditProduct(Product product)
     {
         var parameters = new DialogParameters<ProductDialog>
@@ -164,16 +150,13 @@
             }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-
         var dialog = await DialogService.ShowAsync<ProductDialog>("Редактировать товар", parameters, options);
         var result = await dialog.Result;
-
         if (result is { Canceled: false })
         {
             await LoadProducts();
         }
     }
-
     private async Task DeleteProduct(Product product)
     {
         using var db = await DbFactory.CreateDbContextAsync();
@@ -186,9 +169,7 @@
             await LoadProducts();
         }
     }
-
     private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
-
     private bool FilterFunc(Product product, string searchString)
     {
         if (string.IsNullOrWhiteSpace(searchString))
