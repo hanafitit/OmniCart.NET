@@ -1,4 +1,7 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IBrowserViewportService ViewportService
+@implements IAsyncDisposable
 
 <MudThemeProvider Theme="_currentTheme" />
 <MudPopoverProvider />
@@ -11,7 +14,7 @@
         <MudText Typo="Typo.h5" Class="ml-3">OmniCart Admin</MudText>
         <MudSpacer />
     </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Responsive" Breakpoint="Breakpoint.Sm">
         <NavMenu />
     </MudDrawer>
     <MudMainContent>
@@ -23,6 +26,27 @@
 
 @code {
     bool _drawerOpen = true;
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Закрываем Drawer при переходе по ссылке только на мобильных устройствах (<= Sm)
+        var breakpoint = await ViewportService.GetCurrentBreakpointAsync();
+        if (breakpoint <= Breakpoint.Sm && _drawerOpen)
+        {
+            _drawerOpen = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
 
     private MudTheme _currentTheme = new MudTheme()
     {
