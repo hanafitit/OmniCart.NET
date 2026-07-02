@@ -6,7 +6,6 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h4" Class="font-weight-bold">Товары</MudText>
@@ -14,7 +13,6 @@
             Добавить товар
         </MudButton>
     </div>
-
     <MudTable Items="@_products" Hover="true" Breakpoint="Breakpoint.Md" Loading="@_loading" Elevation="0" Class="rounded-lg mobile-cards-table" Filter="new Func<Product,bool>(FilterFunc1)">
     <ToolBarContent>
         <MudSpacer />
@@ -48,7 +46,6 @@
     </RowTemplate>
 </MudTable>
 </MudContainer>
-
 <style>
     /* Адаптация под карточки для Breakpoint.Md (960px) */
     @@media (max-width: 959.95px) {
@@ -56,7 +53,6 @@
             background-color: transparent !important;
             box-shadow: none !important;
         }
-
         .mobile-cards-table .mud-table-row {
             display: block;
             margin-bottom: 16px !important;
@@ -66,7 +62,6 @@
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
             padding: 8px !important;
         }
-
         .mobile-cards-table .mud-table-cell {
             display: flex;
             justify-content: space-between;
@@ -75,7 +70,6 @@
             padding: 6px 12px !important;
             text-align: right !important;
         }
-
         .mobile-cards-table .mud-table-cell::before {
             content: attr(data-label);
             font-weight: 700;
@@ -86,7 +80,6 @@
             text-align: left;
             margin-right: 12px;
         }
-
         .mobile-cards-table .mud-table-cell:last-child {
             border-top: 1px solid #f1f5f9 !important;
             margin-top: 8px;
@@ -94,17 +87,14 @@
         }
     }
 </style>
-
 @code {
     private List<Product> _products = new();
     private bool _loading = true;
     private string _searchString = "";
-
     protected override async Task OnInitializedAsync()
     {
         await LoadProducts();
     }
-
     private async Task LoadProducts()
     {
         _loading = true;
@@ -130,7 +120,6 @@
             _loading = false;
         }
     }
-
     private async Task AddProduct()
     {
         var parameters = new DialogParameters<ProductDialog>
@@ -138,16 +127,13 @@
             { x => x.Product, new Product { Name = "", Description = "" } }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-
         var dialog = await DialogService.ShowAsync<ProductDialog>("Добавить товар", parameters, options);
         var result = await dialog.Result;
-
         if (result is { Canceled: false })
         {
             await LoadProducts();
         }
     }
-
     private async Task EditProduct(Product product)
     {
         var parameters = new DialogParameters<ProductDialog>
@@ -164,16 +150,13 @@
             }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-
         var dialog = await DialogService.ShowAsync<ProductDialog>("Редактировать товар", parameters, options);
         var result = await dialog.Result;
-
         if (result is { Canceled: false })
         {
             await LoadProducts();
         }
     }
-
     private async Task DeleteProduct(Product product)
     {
         using var db = await DbFactory.CreateDbContextAsync();
@@ -186,9 +169,7 @@
             await LoadProducts();
         }
     }
-
     private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
-
     private bool FilterFunc(Product product, string searchString)
     {
         if (string.IsNullOrWhiteSpace(searchString))
