@@ -14,7 +14,7 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h4" Class="font-weight-bold mb-4">Заказы</MudText>
 
-    <MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" Elevation="1" Class="rounded-lg" Filter="new Func<Order,bool>(FilterFunc1)">
+    <MudTable Items="@_orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" Elevation="0" Class="rounded-lg mobile-cards-table" Filter="new Func<Order,bool>(FilterFunc1)">
     <ToolBarContent>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString" Placeholder="Поиск заказа..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
@@ -28,41 +28,106 @@
         <MudTh>Статус</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="ID">@context.Id</MudTd>
+        <MudTd DataLabel="ID"><b>#@context.Id</b></MudTd>
         <MudTd DataLabel="Дата">@context.CreatedAt.ToString("g")</MudTd>
-        <MudTd DataLabel="Клиент">@context.User?.FirstName @context.User?.LastName (@context.User?.TelegramUserId)</MudTd>
-        <MudTd DataLabel="Адрес">@context.DeliveryAddress</MudTd>
-        <MudTd DataLabel="Сумма">@context.TotalPrice руб.</MudTd>
+        <MudTd DataLabel="Клиент">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2" />
+                <span>@context.User?.FirstName @context.User?.LastName</span>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Адрес">
+             <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-2" />
+                <span class="text-truncate" style="max-width: 200px;">@context.DeliveryAddress</span>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Сумма"><span class="mud-primary-text font-weight-bold">@context.TotalPrice.ToString("N0") руб.</span></MudTd>
         <MudTd DataLabel="Статус">
             @{ var currentOrder = context; }
-            <MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
-                <ActivatorContent Context="menuActivator">
-                    <div class="d-sm-none">
-                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" />
-                    </div>
-                    <div class="d-none d-sm-block">
-                        <MudChip T="string" Color="@GetStatusColor(currentOrder.Status)" Variant="Variant.Filled">
-                            @GetStatusText(currentOrder.Status)
-                        </MudChip>
-                    </div>
-                </ActivatorContent>
-                <ChildContent>
+            @* Мобильная версия: просто кнопка-меню *@
+            <div class="d-sm-none">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Created"))">Новый</MudMenuItem>
                     <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Processing"))">В обработке</MudMenuItem>
                     <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Shipped"))">Отправлен</MudMenuItem>
                     <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Delivered"))">Доставлен</MudMenuItem>
                     <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Cancelled"))">Отменен</MudMenuItem>
                     <MudDivider />
-                    <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => ViewOrderDetails(currentOrder))">Детали заказа</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteOrder(currentOrder))">
-                        <MudText Color="Color.Error">Удалить заказ</MudText>
-                    </MudMenuItem>
-                </ChildContent>
-            </MudMenu>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => ViewOrderDetails(currentOrder))">Детали</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteOrder(currentOrder))">Удалить</MudMenuItem>
+                </MudMenu>
+            </div>
+            @* Десктопная версия: чип с меню *@
+            <div class="d-none d-sm-block">
+                <MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+                    <ActivatorContent Context="statusMenuContext">
+                        <MudChip T="string" Color="@GetStatusColor(currentOrder.Status)" Variant="Variant.Filled" Size="Size.Small">
+                            @GetStatusText(currentOrder.Status)
+                        </MudChip>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Created"))">Новый</MudMenuItem>
+                        <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Processing"))">В обработке</MudMenuItem>
+                        <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Shipped"))">Отправлен</MudMenuItem>
+                        <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Delivered"))">Доставлен</MudMenuItem>
+                        <MudMenuItem OnClick="@(() => UpdateStatus(currentOrder, "Cancelled"))">Отменен</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => ViewOrderDetails(currentOrder))">Детали заказа</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteOrder(currentOrder))">Удалить заказ</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </div>
         </MudTd>
     </RowTemplate>
 </MudTable>
 </MudContainer>
+
+<style>
+    @@media (max-width: 600px) {
+        .mobile-cards-table .mud-table-container {
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .mobile-cards-table .mud-table-row {
+            display: block;
+            margin-bottom: 20px !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            background: white !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            padding: 12px !important;
+            overflow: hidden;
+        }
+
+        .mobile-cards-table .mud-table-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none !important;
+            padding: 8px 12px !important;
+            text-align: right !important;
+        }
+
+        .mobile-cards-table .mud-table-cell::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-align: left;
+            margin-right: 16px;
+        }
+
+        .mobile-cards-table .mud-table-cell:last-child {
+            border-top: 1px solid #f1f5f9 !important;
+            margin-top: 8px;
+            padding-top: 12px !important;
+        }
+    }
+</style>
 
 @code {
     private List<Order> _orders = new();
